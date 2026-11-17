@@ -1,4 +1,7 @@
-# White Jack — Impara il C costruendo un blackjack da terminale
+# White Jack
+# Impara il C costruendo un blackjack da terminale
+
+![White Jack in azione nel terminale](screenshot-terminale-whitejack.png)
 
 Guida pratica, passo dopo passo, per imparare il linguaggio C scrivendo un gioco di blackjack completo: mazzo, mescolata, punteggio, turno del giocatore e del banco, fiches e puntate, blackjack naturale, grafica ASCII a colori con la carta coperta. Si lavora solo con il **Terminale del Mac** e l'editor **`vi`**, senza programmi grafici.
 
@@ -12,18 +15,18 @@ Tutto il codice di questa guida è stato compilato e provato (compilatore `clang
 1. [Concetti di base: compilatore, librerie, header](#1-concetti-di-base-compilatore-librerie-header)
 2. [Preparare l'ambiente](#2-preparare-lambiente)
 3. [L'editor vi](#3-leditor-vi)
-4. [Lezione 1 — Il primo programma](#4-lezione-1--il-primo-programma)
-5. [Lezione 2 — Le carte (enum, struct, funzioni)](#5-lezione-2--le-carte-enum-struct-funzioni)
-6. [Lezione 3 — Il mazzo (array e cicli for)](#6-lezione-3--il-mazzo-array-e-cicli-for)
-7. [Lezione 4 — Mescolare il mazzo (numeri casuali)](#7-lezione-4--mescolare-il-mazzo-numeri-casuali)
-8. [Lezione 5 — La mano e il punteggio (puntatori)](#8-lezione-5--la-mano-e-il-punteggio-puntatori)
-9. [Lezione 6 — Il turno del giocatore (input da tastiera)](#9-lezione-6--il-turno-del-giocatore-input-da-tastiera)
-10. [Lezione 7 — Il banco e l'esito della partita](#10-lezione-7--il-banco-e-lesito-della-partita)
-11. [Lezione 8 — Dividere il codice in moduli](#11-lezione-8--dividere-il-codice-in-moduli)
-12. [Lezione 9 — Il Makefile](#12-lezione-9--il-makefile)
-13. [Lezione 10 — Fiches, puntate e blackjack naturale](#13-lezione-10--fiches-puntate-e-blackjack-naturale)
-14. [Lezione 11 — Grafica ASCII, colori e carta coperta](#14-lezione-11--grafica-ascii-colori-e-carta-coperta)
-15. [Lezione 12 — Messaggi a colori e "Hai vinto/perso N fiches"](#15-lezione-12--messaggi-a-colori-e-hai-vintoperso-n-fiches)
+4. [Lezione 1 - Il primo programma](#4-lezione-1---il-primo-programma)
+5. [Lezione 2 - Le carte (enum, struct, funzioni)](#5-lezione-2---le-carte-enum-struct-funzioni)
+6. [Lezione 3 - Il mazzo (array e cicli for)](#6-lezione-3---il-mazzo-array-e-cicli-for)
+7. [Lezione 4 - Mescolare il mazzo (numeri casuali)](#7-lezione-4---mescolare-il-mazzo-numeri-casuali)
+8. [Lezione 5 - La mano e il punteggio (puntatori)](#8-lezione-5---la-mano-e-il-punteggio-puntatori)
+9. [Lezione 6 - Il turno del giocatore (input da tastiera)](#9-lezione-6---il-turno-del-giocatore-input-da-tastiera)
+10. [Lezione 7 - Il banco e l'esito della partita](#10-lezione-7---il-banco-e-lesito-della-partita)
+11. [Lezione 8 - Dividere il codice in moduli](#11-lezione-8---dividere-il-codice-in-moduli)
+12. [Lezione 9 - Il Makefile](#12-lezione-9---il-makefile)
+13. [Lezione 10 - Fiches, puntate e blackjack naturale](#13-lezione-10---fiches-puntate-e-blackjack-naturale)
+14. [Lezione 11 - Grafica ASCII, colori e carta coperta](#14-lezione-11---grafica-ascii-colori-e-carta-coperta)
+15. [Lezione 12 - Messaggi a colori e "Hai vinto/perso N fiches"](#15-lezione-12---messaggi-a-colori-e-hai-vintoperso-n-fiches)
 16. [Codice completo finale](#16-codice-completo-finale)
 17. [Errori comuni e come risolverli](#17-errori-comuni-e-come-risolverli)
 18. [Glossario](#18-glossario)
@@ -271,7 +274,7 @@ Quando apri un file che ha uno swap rimasto, vi mostra **"Found a swap file"** c
 
 ---
 
-## 4. Lezione 1 — Il primo programma
+## 4. Lezione 1 - Il primo programma
 
 **Obiettivo:** scrivere, salvare, compilare ed eseguire un programma.
 
@@ -320,7 +323,7 @@ Dovresti leggere: `Benvenuto a White Jack!`
 
 ---
 
-## 5. Lezione 2 — Le carte (enum, struct, funzioni)
+## 5. Lezione 2 - Le carte (enum, struct, funzioni)
 
 **Obiettivo:** rappresentare una carta da gioco.
 
@@ -362,7 +365,7 @@ Compila ed esegui. Dovresti vedere `1 di Picche`.
 
 ---
 
-## 6. Lezione 3 — Il mazzo (array e cicli for)
+## 6. Lezione 3 - Il mazzo (array e cicli for)
 
 **Obiettivo:** creare le 52 carte.
 
@@ -427,7 +430,7 @@ Deve comparire l'elenco delle 52 carte, da `Asso di Cuori` a `Re di Picche`. Per
 
 ---
 
-## 7. Lezione 4 — Mescolare il mazzo (numeri casuali)
+## 7. Lezione 4 - Mescolare il mazzo (numeri casuali)
 
 **Obiettivo:** mescolare le carte.
 
@@ -506,7 +509,7 @@ Compila ed esegui più volte: le 5 carte devono cambiare a ogni esecuzione.
 
 ---
 
-## 8. Lezione 5 — La mano e il punteggio (puntatori)
+## 8. Lezione 5 - La mano e il punteggio (puntatori)
 
 **Obiettivo:** una mano di carte con il calcolo del punteggio.
 
@@ -636,7 +639,7 @@ Eseguilo qualche volta e controlla il punteggio: `Re` + `7` = 17, `Asso` + `Re` 
 
 ---
 
-## 9. Lezione 6 — Il turno del giocatore (input da tastiera)
+## 9. Lezione 6 - Il turno del giocatore (input da tastiera)
 
 **Obiettivo:** il giocatore decide se pescare o fermarsi.
 
@@ -692,7 +695,7 @@ Compila ed esegui. Alla domanda scrivi `c` + `Invio` per pescare o `s` + `Invio`
 
 ---
 
-## 10. Lezione 7 — Il banco e l'esito della partita
+## 10. Lezione 7 - Il banco e l'esito della partita
 
 **Obiettivo:** il banco pesca fino a 17 e si confrontano i punteggi.
 
@@ -778,7 +781,7 @@ Una semplificazione che per ora lasciamo: un 21 con due carte conta come un norm
 
 ---
 
-## 11. Lezione 8 — Dividere il codice in moduli
+## 11. Lezione 8 - Dividere il codice in moduli
 
 **Obiettivo:** passare da un unico file a più file, come nei progetti veri.
 
@@ -794,13 +797,13 @@ Una semplificazione che per ora lasciamo: un 21 con due carte conta come un norm
 
 Gli header hanno le **include guard** (`#ifndef ... #define ... #endif`): evitano errori se lo stesso header viene incluso due volte.
 
-### Passo 0 — copia di sicurezza
+### Passo 0 - copia di sicurezza
 
 ```bash
 cp main.c main_backup.c
 ```
 
-### Passo 1 — crea `carte.h`
+### Passo 1 - crea `carte.h`
 
 ```bash
 vi carte.h
@@ -830,7 +833,7 @@ void mescola_mazzo(struct Carta mazzo[], int n);                // dichiarazione
 
 `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 2 — crea `mano.h`
+### Passo 2 - crea `mano.h`
 
 ```bash
 vi mano.h
@@ -861,7 +864,7 @@ void stampa_mano(struct Mano m);                                // dichiarazione
 
 `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 3 — crea `carte.c` spostando il codice che c'è già
+### Passo 3 - crea `carte.c` spostando il codice che c'è già
 
 Non riscrivi nulla: copi `main_backup.c` e cancelli in vi ciò che non serve, usando intervalli.
 
@@ -894,7 +897,7 @@ Restano le due tabelle dei nomi, `stampa_carta`, `crea_mazzo` e `mescola_mazzo`.
 
 `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 4 — crea `mano.c`
+### Passo 4 - crea `mano.c`
 
 ```bash
 cp main_backup.c mano.c
@@ -917,7 +920,7 @@ Restano `valore_carta`, `punteggio`, `aggiungi_carta` e `stampa_mano`. In cima (
 
 `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 5 — riduci `main.c`
+### Passo 5 - riduci `main.c`
 
 ```bash
 vi main.c
@@ -941,7 +944,7 @@ Restano `turno_giocatore`, `turno_banco`, `stampa_esito` e `main`. In cima (`gg`
 
 `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 6 — controlla e compila
+### Passo 6 - controlla e compila
 
 Controlla che ogni funzione sia nel file giusto:
 
@@ -977,7 +980,7 @@ Se qualcosa si rovina, `main_backup.c` contiene ancora il programma intero (ma a
 
 ---
 
-## 12. Lezione 9 — Il Makefile
+## 12. Lezione 9 - Il Makefile
 
 **Obiettivo:** compilare tutto con un solo comando, ricompilando solo ciò che è cambiato.
 
@@ -1067,7 +1070,7 @@ Anche Redis usa un Makefile: i suoi file `.d` servono proprio a tenere traccia d
 
 ---
 
-## 13. Lezione 10 — Fiches, puntate e blackjack naturale
+## 13. Lezione 10 - Fiches, puntate e blackjack naturale
 
 **Obiettivo:** un vero gioco con saldo e puntate, su più mani di fila.
 
@@ -1082,7 +1085,7 @@ Anche Redis usa un Makefile: i suoi file `.d` servono proprio a tenere traccia d
 
 Le modifiche riguardano tre file. Prima di incollare, in ogni file scrivi `:set paste`.
 
-### Modifica 1 — `mano.h` (la dichiarazione)
+### Modifica 1 - `mano.h` (la dichiarazione)
 
 ```bash
 vi mano.h
@@ -1094,7 +1097,7 @@ Cerca `/#endif`, `Invio`, `O` (apre una riga sopra), e incolla:
 int ha_blackjack(struct Mano m);                                // dichiarazione: vero se la mano è un blackjack naturale
 ```
 
-### Modifica 2 — `mano.c` (la funzione)
+### Modifica 2 - `mano.c` (la funzione)
 
 ```bash
 vi mano.c
@@ -1111,7 +1114,7 @@ int ha_blackjack(struct Mano m) {                               // dice se la ma
 
 > **Errore frequente:** il corpo della funzione va in `mano.c`, **non** in `mano.h`. Se finisce nell'header, sia `main.c` sia `mano.c` lo includono e il collegamento fallisce con `duplicate symbol '_ha_blackjack'` (vedi il capitolo 17).
 
-### Modifica 3 — `main.c` (sostituisci la fine del file)
+### Modifica 3 - `main.c` (sostituisci la fine del file)
 
 Il vecchio `stampa_esito` e il vecchio `main` vengono sostituiti da codice nuovo. `turno_giocatore` e `turno_banco` restano.
 
@@ -1266,7 +1269,7 @@ make
 
 **Prove**
 1. **Puntata non valida**: prova una lettera (`ciao`), un numero troppo alto, un numero negativo. Il programma deve richiedere senza bloccarsi.
-2. **Il saldo cambia nel modo giusto**: punta 10; una vittoria porta a +10, una sconfitta a −10, un pareggio a 0.
+2. **Il saldo cambia nel modo giusto**: punta 10; una vittoria porta a +10, una sconfitta a -10, un pareggio a 0.
 3. **Uscita**: scrivi `0` alla puntata.
 4. **Game over**: punta tutto più volte; se perdi tutto compare `Hai finito le fiches`.
 
@@ -1282,7 +1285,7 @@ Il giocatore riceve Asso di Cuori e Re di Cuori: con puntata 10 devi vedere `BLA
 
 ---
 
-## 14. Lezione 11 — Grafica ASCII, colori e carta coperta
+## 14. Lezione 11 - Grafica ASCII, colori e carta coperta
 
 **Obiettivo:** disegnare le carte con bordo e simboli, in colore, e coprire la seconda carta del banco.
 
@@ -1313,7 +1316,7 @@ Giocatore
 Punteggio: 13
 ```
 
-### Passo 1 — crea `grafica.h`
+### Passo 1 - crea `grafica.h`
 
 ```bash
 vi grafica.h
@@ -1339,7 +1342,7 @@ void mostra_mano(const char *titolo, struct Mano m, int nascondi_seconda);   // 
 
 `Esc`, `:wq`.
 
-### Passo 2 — crea `grafica.c`
+### Passo 2 - crea `grafica.c`
 
 ```bash
 vi grafica.c
@@ -1413,7 +1416,7 @@ void mostra_mano(const char *titolo, struct Mano m, int nascondi_seconda) {   //
 
 `Esc`, `:wq`.
 
-### Passo 3 — modifica `main.c`
+### Passo 3 - modifica `main.c`
 
 Sono sei piccole modifiche, da fare **in quest'ordine**. Apri `vi main.c`. Ogni ricerca va seguita da `Invio`. Prima di ogni cancellazione controlla che il cursore sia sulla riga giusta: se non lo è, premi `Esc` e non cancellare. Tieni `:set paste` attivo per tutta la sessione.
 
@@ -1463,7 +1466,7 @@ grep -n "stampa_mano\|Mano finale\|Mano del banco" main.c
 
 Il primo comando deve mostrare **5 righe**, la più bassa subito dopo `turno_banco(...)`. Il secondo **nessuna**.
 
-### Passo 4 — aggiorna il `Makefile`
+### Passo 4 - aggiorna il `Makefile`
 
 ```bash
 vi Makefile
@@ -1487,7 +1490,7 @@ grafica.o: grafica.c grafica.h mano.h carte.h
 
 Se `make` dà `missing separator`, applica la correzione dei TAB descritta nella lezione 9. Poi `Esc`, `:set nopaste`, `:wq`.
 
-### Passo 5 — compila e gioca
+### Passo 5 - compila e gioca
 
 ```bash
 make
@@ -1500,7 +1503,7 @@ Controlla che i cuori e i quadri siano **rossi**, che la seconda carta del banco
 
 ---
 
-## 15. Lezione 12 — Messaggi a colori e "Hai vinto/perso N fiches"
+## 15. Lezione 12 - Messaggi a colori e "Hai vinto/perso N fiches"
 
 ### 15.1 Messaggi a colori
 
@@ -1567,8 +1570,8 @@ vi main.c
 Poi `make` e `./whitejack`.
 
 **Come funziona**
-- `gioca_mano` restituisce già la variazione del saldo (+10, −20, +15 per il blackjack, 0 per il pareggio). Ora la salviamo in una variabile, `variazione`, per usarla anche nel messaggio.
-- Nella sconfitta la variazione è negativa (−50). Scrivendo `-variazione` si toglie il segno: il messaggio dice "Hai perso 50 fiches" e non "Hai perso -50 fiches".
+- `gioca_mano` restituisce già la variazione del saldo (+10, -20, +15 per il blackjack, 0 per il pareggio). Ora la salviamo in una variabile, `variazione`, per usarla anche nel messaggio.
+- Nella sconfitta la variazione è negativa (-50). Scrivendo `-variazione` si toglie il segno: il messaggio dice "Hai perso 50 fiches" e non "Hai perso -50 fiches".
 - `%d` viene sostituito dal numero passato dopo la stringa. In `printf(VERDE "...%d..." RESET, variazione)` la variabile va **dopo** tutte le stringhe unite, e gli argomenti vanno nello stesso ordine dei `%d`.
 
 ---

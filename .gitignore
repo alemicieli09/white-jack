@@ -1,3 +1,4 @@
 *.o
 whitejack
 *.swp
+.DS_Store
