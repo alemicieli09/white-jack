@@ -1,7 +1,7 @@
 # White Jack
 # Impara il C costruendo un blackjack da terminale
 
-![White Jack in azione nel terminale](screenshot-terminale-whitejack.png)
+![White Jack in azione nel terminale](whitejack.png)
 
 Guida pratica, passo dopo passo, per imparare il linguaggio C scrivendo un gioco di blackjack completo: mazzo, mescolata, punteggio, turno del giocatore e del banco, fiches e puntate, blackjack naturale, grafica ASCII a colori con la carta coperta. Si lavora solo con il **Terminale del Mac** e l'editor **`vi`**, senza programmi grafici.
 
