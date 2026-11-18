@@ -30,3 +30,23 @@ void mescola_mazzo(struct Carta mazzo[], int n) {               // mescola le pr
     }                                                           // fine del ciclo
 }                                                               // fine di mescola_mazzo
 
+void scarpa_rimescola(struct Scarpa *s) {                       // riempie la scarpa con 6 mazzi completi e la mescola (s è un puntatore: la scarpa originale)
+    for (int k = 0; k < NUM_MAZZI; k++) {                       // per ognuno dei 6 mazzi...
+        crea_mazzo(&s->carte[k * NUM_CARTE]);                   // ...crea 52 carte a partire dalla posizione k x 52 (& prende l'indirizzo di quella posizione)
+    }                                                           // fine del ciclo dei mazzi
+    mescola_mazzo(s->carte, CARTE_SCARPA);                      // mescola tutte le 312 carte insieme
+    s->prossima = 0;                                            // si riparte dalla prima carta
+}                                                               // fine di scarpa_rimescola
+
+struct Carta scarpa_pesca(struct Scarpa *s) {                   // restituisce la carta in cima alla scarpa e passa alla successiva
+    if (s->prossima >= CARTE_SCARPA) {                          // sicurezza: se le carte sono finite del tutto...
+        scarpa_rimescola(s);                                    // ...ricrea la scarpa (non dovrebbe mai succedere)
+    }                                                           // fine del controllo
+    struct Carta c = s->carte[s->prossima];                     // prende la carta in cima
+    s->prossima++;                                              // la prossima volta si pesca quella dopo
+    return c;                                                   // restituisce la carta pescata
+}                                                               // fine di scarpa_pesca
+
+int scarpa_da_rimescolare(const struct Scarpa *s) {             // dice se restano poche carte (const: la funzione legge soltanto)
+    return CARTE_SCARPA - s->prossima < SOGLIA_RIMESCOLA;       // carte rimaste = totale - già pescate; vero se sono meno della soglia
+}                                                               // fine di scarpa_da_rimescolare

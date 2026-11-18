@@ -3,7 +3,7 @@
 
 ![White Jack in azione nel terminale](whitejack.png)
 
-Guida pratica, passo dopo passo, per imparare il linguaggio C scrivendo un gioco di blackjack completo: mazzo, mescolata, punteggio, turno del giocatore e del banco, fiches e puntate, blackjack naturale, grafica ASCII a colori con la carta coperta. Si lavora solo con il **Terminale del Mac** e l'editor **`vi`**, senza programmi grafici.
+Guida pratica, passo dopo passo, per imparare il linguaggio C scrivendo un gioco di blackjack completo: mazzo, mescolata, punteggio, turno del giocatore e del banco, fiches e puntate, blackjack naturale, grafica ASCII a colori con la carta coperta, menu e statistiche, obiettivi, più mazzi, raddoppio e divisione. Si lavora solo con il **Terminale del Mac** e l'editor **`vi`**, senza programmi grafici.
 
 Tutto il codice di questa guida è stato compilato e provato (compilatore `clang` con `-Wall -Wextra`, nessun avviso).
 
@@ -27,10 +27,15 @@ Tutto il codice di questa guida è stato compilato e provato (compilatore `clang
 13. [Lezione 10 - Fiches, puntate e blackjack naturale](#13-lezione-10---fiches-puntate-e-blackjack-naturale)
 14. [Lezione 11 - Grafica ASCII, colori e carta coperta](#14-lezione-11---grafica-ascii-colori-e-carta-coperta)
 15. [Lezione 12 - Messaggi a colori e "Hai vinto/perso N fiches"](#15-lezione-12---messaggi-a-colori-e-hai-vintoperso-n-fiches)
-16. [Codice completo finale](#16-codice-completo-finale)
-17. [Errori comuni e come risolverli](#17-errori-comuni-e-come-risolverli)
-18. [Glossario](#18-glossario)
-19. [Esercizi e prossimi passi](#19-esercizi-e-prossimi-passi)
+16. [Lezione 13 - Schermata iniziale e menu](#16-lezione-13---schermata-iniziale-e-menu)
+17. [Lezione 14 - Statistiche di sessione](#17-lezione-14---statistiche-di-sessione)
+18. [Lezione 15 - Obiettivi da sbloccare](#18-lezione-15---obiettivi-da-sbloccare)
+19. [Lezione 16 - Più mazzi (la scarpa)](#19-lezione-16---più-mazzi-la-scarpa)
+20. [Lezione 17 - Raddoppio e divisione](#20-lezione-17---raddoppio-e-divisione)
+21. [Codice completo finale](#21-codice-completo-finale)
+22. [Errori comuni e come risolverli](#22-errori-comuni-e-come-risolverli)
+23. [Glossario](#23-glossario)
+24. [Esercizi e prossimi passi](#24-esercizi-e-prossimi-passi)
 
 ---
 
@@ -40,10 +45,13 @@ Alla fine avrai un gioco di blackjack giocabile da terminale, diviso in moduli c
 
 ```
 whitejack/
-├── main.c        ← la partita: turni, puntate, risultato
-├── carte.h/.c    ← carte, semi, mazzo, mescolata
+├── main.c        ← la partita: turni, puntate, raddoppio, divisione
+├── carte.h/.c    ← carte, semi, mazzo, scarpa a 6 mazzi, mescolata
 ├── mano.h/.c     ← mano, punteggio, blackjack naturale
 ├── grafica.h/.c  ← carte ASCII, colori, carta coperta
+├── menu.h/.c     ← logo, menu e schermata delle regole
+├── stats.h/.c    ← statistiche di sessione
+├── obiettivi.h/.c← obiettivi da sbloccare
 └── Makefile      ← compila tutto con il solo comando `make`
 ```
 
@@ -53,6 +61,20 @@ whitejack/
 - Chi supera 21 "sballa" e perde.
 - Il banco pesca finché ha meno di 17 punti.
 - Si parte con 100 fiches; a ogni mano si punta. Una vittoria paga 1 a 1, il blackjack naturale (21 con le prime due carte) paga 3 a 2.
+- Si gioca con **6 mazzi** mescolati insieme (la "scarpa"), rimescolati solo quando restano meno di 78 carte.
+- Alla prima decisione puoi **raddoppiare** (`d`: puntata doppia e una sola carta) o, con due carte uguali, **dividere** (`p`: due mani, ognuna con la sua puntata).
+- Tre **obiettivi** da sbloccare: primo blackjack, 5 vittorie di fila, 500 fiches.
+
+**Come si gioca (in breve)**
+
+| Tasto | Cosa fa | Quando |
+|---|---|---|
+| `c` | pesca una carta | sempre, finché non sballi |
+| `s` | ti fermi | sempre |
+| `d` | raddoppi la puntata e prendi **una sola** carta | solo alla prima decisione, con fiches sufficienti |
+| `p` | dividi le due carte uguali in due mani | solo alla prima decisione, con fiches sufficienti |
+
+Nel menu iniziale: `1` Gioca, `2` Regole (le stesse regole, spiegate nel gioco), `3` Obiettivi, `4` Esci. Alla puntata, `0` termina la sessione e mostra le statistiche.
 
 **Cosa imparerai, lezione per lezione**
 
@@ -70,6 +92,11 @@ whitejack/
 | 10 | valori di ritorno, `&&`, `\|\|`, `while (1)`, input sicuro |
 | 11 | codici ANSI, `switch`, `static`, disegno riga per riga |
 | 12 | concatenazione di stringhe, variabili di appoggio |
+| 13 | nuovo modulo, ciclo di menu, stringhe unite, `main` come regista |
+| 14 | `struct` di contatori, puntatori a `struct`, `const` |
+| 15 | array di condizioni, `!`, operatore `? :`, parametri "di uscita" |
+| 16 | `struct` con array, indirizzo di un elemento, `#define` calcolati |
+| 17 | `enum` come ritorno, array di `struct`, funzioni `static`, intervalli `;` in vi |
 
 **Convenzioni**
 - I comandi da scrivere nel terminale sono nei blocchi ` ```bash `.
@@ -1112,7 +1139,7 @@ int ha_blackjack(struct Mano m) {                               // dice se la ma
 }                                                               // fine di ha_blackjack
 ```
 
-> **Errore frequente:** il corpo della funzione va in `mano.c`, **non** in `mano.h`. Se finisce nell'header, sia `main.c` sia `mano.c` lo includono e il collegamento fallisce con `duplicate symbol '_ha_blackjack'` (vedi il capitolo 17).
+> **Errore frequente:** il corpo della funzione va in `mano.c`, **non** in `mano.h`. Se finisce nell'header, sia `main.c` sia `mano.c` lo includono e il collegamento fallisce con `duplicate symbol '_ha_blackjack'` (vedi il capitolo 22).
 
 ### Modifica 3 - `main.c` (sostituisci la fine del file)
 
@@ -1281,7 +1308,7 @@ Il blackjack naturale esce in circa una mano su 21. Per provarlo subito, in `gio
 
 Il giocatore riceve Asso di Cuori e Re di Cuori: con puntata 10 devi vedere `BLACKJACK! Vinci 3 a 2.` e il saldo salire di 15. Poi **togli la riga di prova e i `//`**, altrimenti il gioco avrà sempre le stesse carte.
 
-> Le fiches **non vengono salvate** tra una partita e l'altra: vivono solo nella variabile `fiches` in memoria, e a ogni avvio si riparte da 100. Salvarle in un file è uno degli esercizi proposti nel capitolo 19.
+> Le fiches **non vengono salvate** tra una partita e l'altra: vivono solo nella variabile `fiches` in memoria, e a ogni avvio si riparte da 100. Salvarle in un file è uno degli esercizi proposti nel capitolo 24.
 
 ---
 
@@ -1576,17 +1603,795 @@ Poi `make` e `./whitejack`.
 
 ---
 
-## 16. Codice completo finale
+## 16. Lezione 13 - Schermata iniziale e menu
 
-Questi sono i file del progetto a fine guida, tutti compilati con `clang -Wall -Wextra` senza avvisi. Servono per controllare il tuo lavoro o per ripartire da una versione sicura.
+**Obiettivo:** un logo "WHITE JACK" in ASCII all'avvio e un menu con le voci Gioca, Regole ed Esci.
 
-### `carte.h`
+**Concetti nuovi**
+- **Un nuovo modulo `menu`**, con il suo header e il suo `.c`, come `carte` e `mano`.
+- **Stringhe vicine si uniscono**: `"  " GIALLO "testo" RESET` è una sola stringa per il compilatore. Così si colora il logo senza codici nascosti.
+- **Ciclo di menu**: si mostra il menu, si legge una scelta, si esegue e si torna al menu, finché si sceglie "Esci".
+- **Il vecchio `main` diventa `gioca_sessione`**: la partita con le fiches è ora una funzione richiamabile dal menu, e `main` fa solo da regista.
+
+### Passo 1 - crea `menu.h`
+
+```bash
+vi menu.h
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#ifndef MENU_H                                                  // include guard
+#define MENU_H                                                  // definisce MENU_H
+
+void mostra_logo(void);                                         // disegna il logo WHITE JACK
+int menu_principale(void);                                      // mostra il menu e restituisce la scelta: 1 = Gioca, 2 = Regole, 3 = Esci
+void mostra_regole(void);                                       // spiega le regole del gioco
+
+#endif                                                          // fine dell'include guard
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 2 - crea `menu.c`
+
+```bash
+vi menu.c
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#include <stdio.h>                                              // printf, scanf, getchar
+#include "grafica.h"                                            // i colori (GIALLO, ROSSO, RESET)
+#include "menu.h"                                               // le dichiarazioni di questo modulo
+
+void mostra_logo(void) {                                        // disegna il logo, 5 righe: WHITE in giallo e JACK in rosso
+    printf("\n");                                               // riga vuota sopra il logo
+    printf("  " GIALLO "█   █ █   █ ███ █████ █████" RESET "   " ROSSO "  ███  ███   ████ █   █" RESET "\n");                    // riga 0 del logo
+    printf("  " GIALLO "█   █ █   █  █    █   █    " RESET "   " ROSSO "   █  █   █ █     █  █" RESET "\n");                    // riga 1 del logo
+    printf("  " GIALLO "█ █ █ █████  █    █   ████ " RESET "   " ROSSO "   █  █████ █     ███" RESET "\n");                    // riga 2 del logo
+    printf("  " GIALLO "██ ██ █   █  █    █   █    " RESET "   " ROSSO "█  █  █   █ █     █  █" RESET "\n");                    // riga 3 del logo
+    printf("  " GIALLO "█   █ █   █ ███   █   █████" RESET "   " ROSSO " ██   █   █  ████ █   █" RESET "\n");                    // riga 4 del logo
+    printf("\n  Blackjack for the terminal\n\n");                // sottotitolo
+}                                                               // fine di mostra_logo
+
+int menu_principale(void) {                                     // mostra il menu e restituisce la scelta valida (1, 2 o 3)
+    int scelta;                                                 // qui memorizza il numero scritto
+    while (1) {                                                 // ciclo infinito: se ne esce con return
+        printf("  1) Gioca\n");                                 // prima voce
+        printf("  2) Regole\n");                                // seconda voce
+        printf("  3) Esci\n");                                  // terza voce
+        printf("\n  Scegli (1-3): ");                           // domanda
+        int letti = scanf("%d", &scelta);                       // legge un intero; restituisce quanti valori ha letto
+        if (letti == EOF) {                                     // se l'input è finito (es. Ctrl+D)...
+            return 3;                                           // ...esce come se avesse scelto "Esci"
+        }                                                       // fine del controllo
+        if (letti != 1) {                                       // se non ha scritto un numero...
+            int c;                                              // carattere letto
+            while ((c = getchar()) != '\n' && c != EOF) {       // ...scarta il resto della riga
+            }                                                   // il ciclo non ha altro da fare
+        } else if (scelta >= 1 && scelta <= 3) {                // altrimenti, se il numero è tra 1 e 3...
+            return scelta;                                      // ...è valido: lo restituisce
+        }                                                       // fine dei controlli
+        printf("\n  Scelta non valida.\n\n");                    // avvisa e ricomincia
+    }                                                           // fine del ciclo
+}                                                               // fine di menu_principale
+
+void mostra_regole(void) {                                      // spiega le regole del gioco
+    printf("\n" GIALLO "Regole" RESET "\n");                    // titolo in giallo
+    printf("- Vince chi si avvicina di più a 21 senza superarlo.\n");                  // obiettivo
+    printf("- Le carte da 2 a 10 valgono il loro numero; J, Q, K valgono 10.\n");       // valori
+    printf("- L'Asso vale 11, oppure 1 se con 11 si supererebbe 21.\n");                // asso
+    printf("- Chi supera 21 sballa e perde.\n");                                        // sballo
+    printf("- Il banco pesca finché ha meno di 17 punti.\n");                          // banco
+    printf("- Un 21 con le prime due carte è un blackjack: paga 3 a 2.\n");            // blackjack
+    printf("- Con un pareggio la puntata ti torna indietro.\n\n");                      // pareggio
+}                                                               // fine di mostra_regole
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+Il logo è disegnato con il carattere `█` (un blocco pieno): ogni lettera è alta 5 righe, come le carte. `WHITE` è in giallo e `JACK` in rosso. `menu_principale` legge un numero con `scanf` e, come `leggi_puntata`, scarta l'input sbagliato invece di bloccarsi.
+
+### Passo 3 - modifica `main.c`
+
+```bash
+cp main.c main_prima_menu.c
+vi main.c
+```
+
+Tieni `:set paste` attivo. Prima l'include: `gg`, `/#include "grafica.h"`, `Invio`, `o`, e incolla:
+
+```c
+#include "menu.h"                                               // logo e menu
+```
+
+Poi la fine del file. Il vecchio `main` viene cancellato e sostituito da `gioca_sessione` (che contiene il ciclo delle puntate) e da un nuovo `main`:
+
+```text
+:/^int main(void)/,$d
+```
+
+Premi `G`, `o`, e incolla:
+
+```c
+void gioca_sessione(void) {                                     // una sessione di gioco: si gioca finché ci sono fiches o si esce
+    int fiches = FICHES_INIZIALI;                               // il saldo del giocatore
+
+    while (fiches > 0) {                                        // finché ci sono fiches...
+        int puntata = leggi_puntata(fiches);                    // ...chiede la puntata
+        if (puntata == 0) {                                     // se il giocatore vuole uscire...
+            break;                                              // ...esce dal ciclo
+        }                                                       // fine del controllo
+        int variazione = gioca_mano(puntata);                   // gioca la mano: restituisce quante fiches si vincono (+) o si perdono (-)
+        fiches += variazione;                                   // aggiorna il saldo
+        if (variazione > 0) {                                   // se è positiva...
+            printf(VERDE "\nHai vinto %d fiches\n\n" RESET, variazione);       // ...hai vinto: mostra quante
+        } else if (variazione < 0) {                            // se è negativa...
+            printf(ROSSO "\nHai perso %d fiches\n\n" RESET, -variazione);      // ...hai perso: mostra quante
+        } else {                                                // se è zero...
+            printf(GIALLO "\nLa puntata ti torna indietro\n\n" RESET);          // ...nessun cambiamento
+        }                                                       // fine dei controlli
+    }                                                           // fine del ciclo
+
+    if (fiches == 0) {                                          // se il saldo è finito...
+        printf("Hai finito le fiches. Fine della partita.\n\n");  // ...game over
+    } else {                                                    // altrimenti il giocatore è uscito di sua volontà
+        printf("Esci dalla partita con %d fiches.\n\n", fiches); // saluto con il saldo finale
+    }                                                           // fine del controllo
+}                                                               // fine di gioca_sessione
+
+int main(void) {                                                // il programma parte da qui
+    srand((unsigned)time(NULL));                                // seme casuale basato sull'orario (una volta sola, all'avvio)
+    mostra_logo();                                              // mostra il logo all'avvio
+
+    int scelta = menu_principale();                             // mostra il menu e legge la scelta
+    while (scelta != 3) {                                       // finché non sceglie "Esci"...
+        if (scelta == 1) {                                      // se ha scelto "Gioca"...
+            gioca_sessione();                                   // ...inizia una nuova sessione
+        } else {                                                // altrimenti ha scelto "Regole"...
+            mostra_regole();                                    // ...le mostra
+        }                                                       // fine della scelta
+        scelta = menu_principale();                             // torna al menu
+    }                                                           // fine del ciclo
+    printf("\nAlla prossima!\n");                              // saluto finale
+    return 0;                                                   // fine, tutto ok
+}                                                               // fine di main
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 4 - aggiorna il `Makefile`
+
+```bash
+vi Makefile
+```
+
+```text
+:%s/^OBJ = main.o carte.o mano.o grafica.o$/OBJ = main.o carte.o mano.o grafica.o menu.o/
+:%s/^main.o: main.c carte.h mano.h grafica.h$/main.o: main.c carte.h mano.h grafica.h menu.h/
+```
+
+Poi `/# Obiettivo di pulizia`, `Invio`, `O`, e incolla la nuova regola (la riga col comando inizia con un **TAB**):
+
+```make
+# menu.o dipende da menu.c e dagli header che usa
+menu.o: menu.c menu.h grafica.h mano.h carte.h
+	$(CC) $(CFLAGS) -c menu.c
+
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 5 - compila e prova
+
+```bash
+make
+./whitejack
+```
+
+**Prove:** deve comparire il logo con il menu. Prova `2` (regole), una lettera e il `7` (devono dare "Scelta non valida"), `1` (gioca) e `0` alla puntata (si torna al menu), `3` (esce).
+
+---
+
+## 17. Lezione 14 - Statistiche di sessione
+
+**Obiettivo:** a fine sessione mostrare mani giocate, vinte, perse e pareggiate, il record di fiches e la serie di vittorie più lunga.
+
+**Concetti nuovi**
+- **Una `struct` che raccoglie dei contatori**, `struct Statistiche`, creata all'inizio della sessione e aggiornata dopo ogni mano.
+- **Puntatore a `struct`**: le funzioni `stats_init` e `stats_registra` modificano la struttura originale (`s->mani++`), come `aggiungi_carta` con la mano.
+- **`const`** nel parametro di `stats_mostra`: promette che la funzione legge soltanto, senza modificare.
+- **Una serie di vittorie**: due contatori, `serie` (quella in corso, si azzera con una sconfitta) e `serie_max` (la più lunga). Un pareggio non interrompe la serie e non la allunga.
+
+### Passo 1 - crea `stats.h`
+
+```bash
+vi stats.h
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#ifndef STATS_H                                                 // include guard
+#define STATS_H                                                 // definisce STATS_H
+
+struct Statistiche {                                            // i numeri di una sessione di gioco
+    int mani;                                                   // mani giocate
+    int vinte;                                                  // mani vinte
+    int perse;                                                  // mani perse
+    int pareggi;                                                // mani pareggiate
+    int record;                                                 // il massimo di fiches raggiunto
+    int serie;                                                  // vittorie consecutive in corso
+    int serie_max;                                              // la serie di vittorie consecutive più lunga
+};                                                              // fine della struct
+
+void stats_init(struct Statistiche *s, int fiches);             // azzera le statistiche all'inizio della sessione
+void stats_registra(struct Statistiche *s, int variazione, int fiches);   // aggiorna le statistiche dopo una mano
+void stats_mostra(const struct Statistiche *s, int fiches);     // mostra il riepilogo della sessione
+
+#endif                                                          // fine dell'include guard
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 2 - crea `stats.c`
+
+```bash
+vi stats.c
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#include <stdio.h>                                              // printf
+#include "grafica.h"                                            // i colori (GIALLO, RESET)
+#include "stats.h"                                              // la struct e le dichiarazioni di questo modulo
+
+void stats_init(struct Statistiche *s, int fiches) {            // azzera le statistiche (s è un puntatore: la struttura originale)
+    s->mani = 0;                                                // nessuna mano giocata
+    s->vinte = 0;                                               // nessuna vittoria
+    s->perse = 0;                                               // nessuna sconfitta
+    s->pareggi = 0;                                             // nessun pareggio
+    s->record = fiches;                                         // il record parte dal saldo iniziale
+    s->serie = 0;                                               // nessuna serie in corso
+    s->serie_max = 0;                                           // nessuna serie registrata
+}                                                               // fine di stats_init
+
+void stats_registra(struct Statistiche *s, int variazione, int fiches) {   // aggiorna i numeri dopo una mano (fiches = saldo già aggiornato)
+    s->mani++;                                                  // una mano in più
+    if (variazione > 0) {                                       // se la mano è stata vinta...
+        s->vinte++;                                             // ...una vittoria in più
+        s->serie++;                                             // ...la serie in corso cresce
+        if (s->serie > s->serie_max) {                          // se supera la serie più lunga...
+            s->serie_max = s->serie;                            // ...diventa la nuova serie più lunga
+        }                                                       // fine del controllo
+    } else if (variazione < 0) {                                // se la mano è stata persa...
+        s->perse++;                                             // ...una sconfitta in più
+        s->serie = 0;                                           // ...la serie si interrompe
+    } else {                                                    // se è un pareggio...
+        s->pareggi++;                                           // ...un pareggio in più (la serie non cambia)
+    }                                                           // fine dei controlli
+    if (fiches > s->record) {                                   // se il saldo supera il record...
+        s->record = fiches;                                     // ...è il nuovo record
+    }                                                           // fine del controllo
+}                                                               // fine di stats_registra
+
+void stats_mostra(const struct Statistiche *s, int fiches) {    // mostra il riepilogo (const: la funzione legge soltanto, non modifica)
+    if (s->mani == 0) {                                         // se non si è giocata nessuna mano...
+        return;                                                 // ...non c'è niente da mostrare
+    }                                                           // fine del controllo
+    printf(GIALLO "Statistiche della sessione" RESET "\n");     // titolo in giallo
+    printf("  Mani giocate:           %d\n", s->mani);          // quante mani
+    printf("  Vinte / perse / pari:   %d / %d / %d\n", s->vinte, s->perse, s->pareggi);   // l'esito delle mani
+    printf("  Serie di vittorie max:  %d\n", s->serie_max);     // la serie più lunga
+    printf("  Record di fiches:       %d\n", s->record);        // il massimo raggiunto
+    printf("  Fiches finali:          %d\n\n", fiches);         // il saldo di fine sessione
+}                                                               // fine di stats_mostra
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 3 - modifica `main.c`: quattro piccole aggiunte
+
+```bash
+cp main.c main_prima_stats.c
+vi main.c
+```
+
+Tieni `:set paste` attivo. Ogni ricerca va seguita da `Invio`.
+
+**3a. Include.** `gg`, `/#include "menu.h"`, `o`, incolla:
+
+```c
+#include "stats.h"                                              // statistiche di sessione
+```
+
+**3b. Creazione delle statistiche, dentro `gioca_sessione`.** `Esc`, `/int fiches = FICHES_INIZIALI`, `o`, incolla:
+
+```c
+    struct Statistiche stats;                                   // le statistiche di questa sessione
+    stats_init(&stats, fiches);                                 // le azzera (&stats = indirizzo della struttura)
+```
+
+**3c. Dopo ogni mano.** `Esc`, `/fiches += variazione`, `o`, incolla:
+
+```c
+        stats_registra(&stats, variazione, fiches);             // aggiorna le statistiche con il risultato della mano
+```
+
+**3d. A fine sessione.** `Esc`, `/fine di gioca_sessione`: il cursore va sulla riga `}` che chiude la funzione. Premi `O` (apre una riga **sopra**) e incolla:
+
+```c
+    stats_mostra(&stats, fiches);                               // a fine sessione mostra il riepilogo
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+> **Errore frequente:** saltare il punto 3b. Il compilatore dice `use of undeclared identifier 'stats'` perché la variabile non è mai stata creata (vedi il capitolo 22).
+
+### Passo 4 - aggiorna il `Makefile`
+
+```bash
+vi Makefile
+```
+
+```text
+:%s/menu.o$/menu.o stats.o/
+:%s/grafica.h menu.h$/grafica.h menu.h stats.h/
+```
+
+Poi `/# Obiettivo di pulizia`, `Invio`, `O`, e incolla (la riga col comando inizia con un **TAB**):
+
+```make
+# stats.o dipende da stats.c e dagli header che usa
+stats.o: stats.c stats.h grafica.h mano.h carte.h
+	$(CC) $(CFLAGS) -c stats.c
+
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 5 - compila e prova
+
+```bash
+make
+./whitejack
+```
+
+Gioca 3-4 mani ed esci con `0` alla puntata: prima di tornare al menu compare il riepilogo. Se non giochi nessuna mano, non compare niente.
+
+---
+
+## 18. Lezione 15 - Obiettivi da sbloccare
+
+**Obiettivo:** tre traguardi, che compaiono con un messaggio quando li raggiungi, e una voce "Obiettivi" nel menu:
+
+| Obiettivo | Come si sblocca |
+|---|---|
+| Primo blackjack | fai un blackjack naturale |
+| Cinque di fila | vinci 5 mani consecutive |
+| Cinquecento | arriva a 500 fiches |
+
+**Concetti nuovi**
+- **Un nuovo modulo `obiettivi`**, che legge le statistiche senza modificarle (`const struct Statistiche *`): gli obiettivi si ricavano dai numeri già raccolti.
+- **Un array di condizioni**: `raggiunto[0] = s->blackjack >= 1;` salva nell'array `1` se il confronto è vero e `0` se è falso. Poi un solo ciclo sblocca quelli raggiunti.
+- **`!` ("non")**: `raggiunto[i] && !o->sbloccato[i]` significa "raggiunto e non ancora sbloccato", così il messaggio compare una volta sola.
+- **Operatore `? :`**: `sbloccato ? 'x' : ' '` sceglie un carattere o l'altro in una riga sola.
+- **Un parametro che "esce" dalla funzione**: `gioca_mano` restituisce già la variazione di fiches, e per dire anche "c'è stato un blackjack" scrive in una variabile di chi la chiama, tramite il puntatore `int *blackjack`.
+- Gli obiettivi vivono in `main` e restano sbloccati **finché il programma è aperto** (non vengono salvati su file).
+
+### Passo 1 - crea `obiettivi.h`
+
+```bash
+vi obiettivi.h
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#ifndef OBIETTIVI_H                                             // include guard
+#define OBIETTIVI_H                                             // definisce OBIETTIVI_H
+
+#include "stats.h"                                              // servono le statistiche per controllare gli obiettivi
+
+#define NUM_OBIETTIVI 3                                         // quanti obiettivi ci sono
+
+struct Obiettivi {                                              // lo stato degli obiettivi
+    int sbloccato[NUM_OBIETTIVI];                               // per ogni obiettivo: 1 = sbloccato, 0 = ancora da sbloccare
+};                                                              // fine della struct
+
+void obiettivi_init(struct Obiettivi *o);                       // dichiarazione: tutti gli obiettivi partono bloccati
+void obiettivi_controlla(struct Obiettivi *o, const struct Statistiche *s);   // dichiarazione: sblocca (e annuncia) quelli raggiunti
+void obiettivi_mostra(const struct Obiettivi *o);               // dichiarazione: mostra l'elenco degli obiettivi
+
+#endif                                                          // fine dell'include guard
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 2 - crea `obiettivi.c`
+
+```bash
+vi obiettivi.c
+```
+
+`:set paste`, `i`, incolla:
+
+```c
+#include <stdio.h>                                              // printf
+#include "grafica.h"                                            // i colori (VERDE, GIALLO, RESET)
+#include "obiettivi.h"                                          // la struct e le dichiarazioni di questo modulo
+
+static const char *nomi[NUM_OBIETTIVI] = {                      // i nomi degli obiettivi (static: visibili solo in questo file)
+    "Primo blackjack",                                          // obiettivo 0
+    "Cinque di fila",                                           // obiettivo 1
+    "Cinquecento"                                               // obiettivo 2
+};                                                              // fine dell'elenco dei nomi
+
+static const char *descrizioni[NUM_OBIETTIVI] = {               // cosa bisogna fare per sbloccarli, nello stesso ordine
+    "fai un blackjack naturale",                                // obiettivo 0
+    "vinci 5 mani consecutive",                                 // obiettivo 1
+    "arriva a 500 fiches"                                       // obiettivo 2
+};                                                              // fine dell'elenco delle descrizioni
+
+void obiettivi_init(struct Obiettivi *o) {                      // azzera gli obiettivi (o è un puntatore: la struttura originale)
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        o->sbloccato[i] = 0;                                    // ...parte bloccato
+    }                                                           // fine del ciclo
+}                                                               // fine di obiettivi_init
+
+void obiettivi_controlla(struct Obiettivi *o, const struct Statistiche *s) {   // controlla le statistiche e sblocca gli obiettivi raggiunti
+    int raggiunto[NUM_OBIETTIVI];                               // per ogni obiettivo: la condizione è soddisfatta?
+    raggiunto[0] = s->blackjack >= 1;                           // 0: almeno un blackjack (il confronto vale 1 se vero, 0 se falso)
+    raggiunto[1] = s->serie_max >= 5;                           // 1: una serie di almeno 5 vittorie consecutive
+    raggiunto[2] = s->record >= 500;                            // 2: il saldo ha toccato almeno 500 fiches
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        if (raggiunto[i] && !o->sbloccato[i]) {                 // ...se è raggiunto e non era ancora sbloccato (! = "non")...
+            o->sbloccato[i] = 1;                                // ...lo sblocca...
+            printf(VERDE "\n★ Obiettivo sbloccato: %s" RESET " (%s)\n", nomi[i], descrizioni[i]);   // ...e lo annuncia
+        }                                                       // fine del controllo
+    }                                                           // fine del ciclo
+}                                                               // fine di obiettivi_controlla
+
+void obiettivi_mostra(const struct Obiettivi *o) {              // mostra l'elenco con lo stato di ognuno
+    printf("\n" GIALLO "Obiettivi" RESET "\n");                 // titolo in giallo
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        printf("  [%c] %s: %s\n", o->sbloccato[i] ? 'x' : ' ', nomi[i], descrizioni[i]);   // ...[x] se sbloccato, [ ] se no (condizione ? se_vero : se_falso)
+    }                                                           // fine del ciclo
+    printf("\n");                                               // riga vuota finale
+}                                                               // fine di obiettivi_mostra
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 3 - sostituisci `stats.h` e `stats.c`
+
+Le statistiche contano anche i blackjack. Sono file piccoli: si sostituisce tutto il contenuto. Per ognuno:
+
+```bash
+vi stats.h
+```
+
+`:set paste`, poi `gg`, `dG` (cancella tutto), `i`, e incolla la nuova versione:
+
+```c
+#ifndef STATS_H                                                 // include guard
+#define STATS_H                                                 // definisce STATS_H
+
+struct Statistiche {                                            // i numeri di una sessione di gioco
+    int mani;                                                   // mani giocate
+    int vinte;                                                  // mani vinte
+    int perse;                                                  // mani perse
+    int pareggi;                                                // mani pareggiate
+    int blackjack;                                              // blackjack naturali ottenuti
+    int record;                                                 // il massimo di fiches raggiunto
+    int serie;                                                  // vittorie consecutive in corso
+    int serie_max;                                              // la serie di vittorie consecutive più lunga
+};                                                              // fine della struct
+
+void stats_init(struct Statistiche *s, int fiches);             // azzera le statistiche all'inizio della sessione
+void stats_registra(struct Statistiche *s, int variazione, int fiches, int blackjack);   // aggiorna le statistiche dopo una mano (blackjack = 1 se il giocatore ha fatto blackjack)
+void stats_mostra(const struct Statistiche *s, int fiches);     // mostra il riepilogo della sessione
+
+#endif                                                          // fine dell'include guard
+```
+
+`Esc`, `:set nopaste`, `:wq`. Poi lo stesso per `stats.c`:
+
+```bash
+vi stats.c
+```
+
+```c
+#include <stdio.h>                                              // printf
+#include "grafica.h"                                            // i colori (GIALLO, RESET)
+#include "stats.h"                                              // la struct e le dichiarazioni di questo modulo
+
+void stats_init(struct Statistiche *s, int fiches) {            // azzera le statistiche (s è un puntatore: la struttura originale)
+    s->mani = 0;                                                // nessuna mano giocata
+    s->vinte = 0;                                               // nessuna vittoria
+    s->perse = 0;                                               // nessuna sconfitta
+    s->pareggi = 0;                                             // nessun pareggio
+    s->blackjack = 0;                                           // nessun blackjack
+    s->record = fiches;                                         // il record parte dal saldo iniziale
+    s->serie = 0;                                               // nessuna serie in corso
+    s->serie_max = 0;                                           // nessuna serie registrata
+}                                                               // fine di stats_init
+
+void stats_registra(struct Statistiche *s, int variazione, int fiches, int blackjack) {   // aggiorna i numeri dopo una mano (fiches = saldo già aggiornato)
+    s->mani++;                                                  // una mano in più
+    if (variazione > 0) {                                       // se la mano è stata vinta...
+        s->vinte++;                                             // ...una vittoria in più
+        s->serie++;                                             // ...la serie in corso cresce
+        if (s->serie > s->serie_max) {                          // se supera la serie più lunga...
+            s->serie_max = s->serie;                            // ...diventa la nuova serie più lunga
+        }                                                       // fine del controllo
+    } else if (variazione < 0) {                                // se la mano è stata persa...
+        s->perse++;                                             // ...una sconfitta in più
+        s->serie = 0;                                           // ...la serie si interrompe
+    } else {                                                    // se è un pareggio...
+        s->pareggi++;                                           // ...un pareggio in più (la serie non cambia)
+    }                                                           // fine dei controlli
+    if (blackjack) {                                            // se il giocatore ha fatto blackjack...
+        s->blackjack++;                                         // ...ne conta uno in più
+    }                                                           // fine del controllo
+    if (fiches > s->record) {                                   // se il saldo supera il record...
+        s->record = fiches;                                     // ...è il nuovo record
+    }                                                           // fine del controllo
+}                                                               // fine di stats_registra
+
+void stats_mostra(const struct Statistiche *s, int fiches) {    // mostra il riepilogo (const: la funzione legge soltanto, non modifica)
+    if (s->mani == 0) {                                         // se non si è giocata nessuna mano...
+        return;                                                 // ...non c'è niente da mostrare
+    }                                                           // fine del controllo
+    printf(GIALLO "Statistiche della sessione" RESET "\n");     // titolo in giallo
+    printf("  Mani giocate:           %d\n", s->mani);          // quante mani
+    printf("  Vinte / perse / pari:   %d / %d / %d\n", s->vinte, s->perse, s->pareggi);   // l'esito delle mani
+    printf("  Serie di vittorie max:  %d\n", s->serie_max);     // la serie più lunga
+    printf("  Blackjack:              %d\n", s->blackjack);       // quanti blackjack naturali
+    printf("  Record di fiches:       %d\n", s->record);        // il massimo raggiunto
+    printf("  Fiches finali:          %d\n\n", fiches);         // il saldo di fine sessione
+}                                                               // fine di stats_mostra
+```
+
+### Passo 4 - sostituisci `menu.h` e `menu.c`
+
+Il menu ha una voce in più (3 = Obiettivi, 4 = Esci). Come nel passo precedente, per ognuno dei due file: `vi`, `:set paste`, `gg`, `dG`, `i`, incolla, `Esc`, `:set nopaste`, `:wq`.
+
+`menu.h`:
+
+```c
+#ifndef MENU_H                                                  // include guard
+#define MENU_H                                                  // definisce MENU_H
+
+void mostra_logo(void);                                         // disegna il logo WHITE JACK
+int menu_principale(void);                                      // mostra il menu e restituisce la scelta: 1 = Gioca, 2 = Regole, 3 = Obiettivi, 4 = Esci
+void mostra_regole(void);                                       // spiega le regole del gioco
+
+#endif                                                          // fine dell'include guard
+```
+
+`menu.c`:
+
+```c
+#include <stdio.h>                                              // printf, scanf, getchar
+#include "grafica.h"                                            // i colori (GIALLO, ROSSO, RESET)
+#include "menu.h"                                               // le dichiarazioni di questo modulo
+
+void mostra_logo(void) {                                        // disegna il logo, 5 righe: WHITE in giallo e JACK in rosso
+    printf("\n");                                               // riga vuota sopra il logo
+    printf("  " GIALLO "█   █ █   █ ███ █████ █████" RESET "   " ROSSO "  ███  ███   ████ █   █" RESET "\n");                    // riga 0 del logo
+    printf("  " GIALLO "█   █ █   █  █    █   █    " RESET "   " ROSSO "   █  █   █ █     █  █" RESET "\n");                    // riga 1 del logo
+    printf("  " GIALLO "█ █ █ █████  █    █   ████ " RESET "   " ROSSO "   █  █████ █     ███" RESET "\n");                    // riga 2 del logo
+    printf("  " GIALLO "██ ██ █   █  █    █   █    " RESET "   " ROSSO "█  █  █   █ █     █  █" RESET "\n");                    // riga 3 del logo
+    printf("  " GIALLO "█   █ █   █ ███   █   █████" RESET "   " ROSSO " ██   █   █  ████ █   █" RESET "\n");                    // riga 4 del logo
+    printf("\n  Blackjack for the terminal\n\n");                // sottotitolo
+}                                                               // fine di mostra_logo
+
+int menu_principale(void) {                                     // mostra il menu e restituisce la scelta valida (da 1 a 4)
+    int scelta;                                                 // qui memorizza il numero scritto
+    while (1) {                                                 // ciclo infinito: se ne esce con return
+        printf("  1) Gioca\n");                                 // prima voce
+        printf("  2) Regole\n");                                // seconda voce
+        printf("  3) Obiettivi\n");                             // terza voce
+        printf("  4) Esci\n");                                  // quarta voce
+        printf("\n  Scegli (1-4): ");                           // domanda
+        int letti = scanf("%d", &scelta);                       // legge un intero; restituisce quanti valori ha letto
+        if (letti == EOF) {                                     // se l'input è finito (es. Ctrl+D)...
+            return 4;                                           // ...esce come se avesse scelto "Esci"
+        }                                                       // fine del controllo
+        if (letti != 1) {                                       // se non ha scritto un numero...
+            int c;                                              // carattere letto
+            while ((c = getchar()) != '\n' && c != EOF) {       // ...scarta il resto della riga
+            }                                                   // il ciclo non ha altro da fare
+        } else if (scelta >= 1 && scelta <= 4) {                // altrimenti, se il numero è tra 1 e 4...
+            return scelta;                                      // ...è valido: lo restituisce
+        }                                                       // fine dei controlli
+        printf("\n  Scelta non valida.\n\n");                    // avvisa e ricomincia
+    }                                                           // fine del ciclo
+}                                                               // fine di menu_principale
+
+void mostra_regole(void) {                                      // spiega le regole del gioco
+    printf("\n" GIALLO "Regole" RESET "\n");                    // titolo in giallo
+    printf("- Vince chi si avvicina di più a 21 senza superarlo.\n");                  // obiettivo
+    printf("- Le carte da 2 a 10 valgono il loro numero; J, Q, K valgono 10.\n");       // valori
+    printf("- L'Asso vale 11, oppure 1 se con 11 si supererebbe 21.\n");                // asso
+    printf("- Chi supera 21 sballa e perde.\n");                                        // sballo
+    printf("- Il banco pesca finché ha meno di 17 punti.\n");                          // banco
+    printf("- Un 21 con le prime due carte è un blackjack: paga 3 a 2.\n");            // blackjack
+    printf("- Con un pareggio la puntata ti torna indietro.\n\n");                      // pareggio
+}                                                               // fine di mostra_regole
+```
+
+### Passo 5 - modifica `main.c`
+
+```bash
+cp main.c main_prima_obiettivi.c
+vi main.c
+```
+
+Tieni `:set paste` attivo. Ogni ricerca va seguita da `Invio`.
+
+**5a. Include.** `gg`, `/#include "stats.h"`, `o`, incolla:
+
+```c
+#include "obiettivi.h"                                          // obiettivi da sbloccare
+```
+
+**5b. `gioca_mano` riceve un parametro in più.** Scrivi:
+
+```text
+:%s/^int gioca_mano(int puntata) {/int gioca_mano(int puntata, int *blackjack) {/
+```
+
+Poi `/^int gioca_mano`, `o` (nuova riga **sotto** la riga della funzione), e incolla:
+
+```c
+    *blackjack = 0;                                             // per ora niente blackjack (*blackjack = la variabile di chi ha chiamato la funzione)
+```
+
+**5c. Quando il giocatore fa blackjack.** `Esc`, `/BLACKJACK! Vinci`, `o` (sotto la riga del messaggio), incolla:
+
+```c
+            *blackjack = 1;                                     // segnala a chi ha chiamato che c'è stato un blackjack
+```
+
+**5d. Fine del file.** `gioca_sessione` e `main` cambiano (obiettivi e nuovo menu). Si sostituiscono dal punto in cui inizia `gioca_sessione`:
+
+```text
+:/^void gioca_sessione/,$d
+```
+
+Premi `G`, `o`, e incolla:
+
+```c
+void gioca_sessione(struct Obiettivi *obiettivi) {              // una sessione di gioco: si gioca finché ci sono fiches o si esce
+    int fiches = FICHES_INIZIALI;                               // il saldo del giocatore
+    struct Statistiche stats;                                   // le statistiche di questa sessione
+    stats_init(&stats, fiches);                                 // le azzera (&stats = indirizzo della struttura)
+
+    while (fiches > 0) {                                        // finché ci sono fiches...
+        int puntata = leggi_puntata(fiches);                    // ...chiede la puntata
+        if (puntata == 0) {                                     // se il giocatore vuole uscire...
+            break;                                              // ...esce dal ciclo
+        }                                                       // fine del controllo
+        int blackjack = 0;                                      // gioca_mano ci scriverà 1 se il giocatore fa blackjack
+        int variazione = gioca_mano(puntata, &blackjack);   // gioca la mano: restituisce quante fiches si vincono (+) o si perdono (-)
+        fiches += variazione;                                   // aggiorna il saldo
+        stats_registra(&stats, variazione, fiches, blackjack);  // aggiorna le statistiche con il risultato della mano
+        if (variazione > 0) {                                   // se è positiva...
+            printf(VERDE "\nHai vinto %d fiches\n\n" RESET, variazione);       // ...hai vinto: mostra quante
+        } else if (variazione < 0) {                            // se è negativa...
+            printf(ROSSO "\nHai perso %d fiches\n\n" RESET, -variazione);      // ...hai perso: mostra quante
+        } else {                                                // se è zero...
+            printf(GIALLO "\nLa puntata ti torna indietro\n\n" RESET);          // ...nessun cambiamento
+        }                                                       // fine dei controlli
+        obiettivi_controlla(obiettivi, &stats);                 // controlla se la mano ha sbloccato qualche obiettivo
+    }                                                           // fine del ciclo
+
+    if (fiches == 0) {                                          // se il saldo è finito...
+        printf("Hai finito le fiches. Fine della partita.\n\n");  // ...game over
+    } else {                                                    // altrimenti il giocatore è uscito di sua volontà
+        printf("Esci dalla partita con %d fiches.\n\n", fiches); // saluto con il saldo finale
+    }                                                           // fine del controllo
+    stats_mostra(&stats, fiches);                               // a fine sessione mostra il riepilogo
+}                                                               // fine di gioca_sessione
+
+int main(void) {                                                // il programma parte da qui
+    srand((unsigned)time(NULL));                                // seme casuale basato sull'orario (una volta sola, all'avvio)
+    struct Obiettivi obiettivi;                                 // gli obiettivi restano sbloccati finché il programma è aperto
+    obiettivi_init(&obiettivi);                                 // all'inizio sono tutti bloccati
+    mostra_logo();                                              // mostra il logo all'avvio
+
+    int scelta = menu_principale();                             // mostra il menu e legge la scelta
+    while (scelta != 4) {                                       // finché non sceglie "Esci"...
+        if (scelta == 1) {                                      // se ha scelto "Gioca"...
+            gioca_sessione(&obiettivi);                         // ...inizia una nuova sessione
+        } else if (scelta == 2) {                               // se ha scelto "Regole"...
+            mostra_regole();                                    // ...le mostra
+        } else {                                                // altrimenti ha scelto "Obiettivi"...
+            obiettivi_mostra(&obiettivi);                       // ...li mostra
+        }                                                       // fine della scelta
+        scelta = menu_principale();                             // torna al menu
+    }                                                           // fine del ciclo
+    printf("\nAlla prossima!\n");                              // saluto finale
+    return 0;                                                   // fine, tutto ok
+}                                                               // fine di main
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 6 - aggiorna il `Makefile`
+
+```bash
+vi Makefile
+```
+
+```text
+:%s/stats.o$/stats.o obiettivi.o/
+:%s/grafica.h menu.h stats.h$/grafica.h menu.h stats.h obiettivi.h/
+```
+
+Poi `/# Obiettivo di pulizia`, `Invio`, `O`, e incolla (riga col comando con un **TAB**):
+
+```make
+# obiettivi.o dipende da obiettivi.c e dagli header che usa
+obiettivi.o: obiettivi.c obiettivi.h stats.h grafica.h
+	$(CC) $(CFLAGS) -c obiettivi.c
+
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 7 - compila e prova
+
+```bash
+make
+./whitejack
+```
+
+Dal menu scegli `3` (Obiettivi): devono comparire tre righe con `[ ]`. Gioca e osserva:
+
+- **Cinque di fila**: punta 1 ficha per mano e vinci cinque mani di fila (con un po' di pazienza; il pareggio non interrompe la serie).
+- **Cinquecento**: per provarlo subito, cambia temporaneamente `raggiunto[2] = s->record >= 500;` in `s->record >= 105;` in `obiettivi.c`, ricompila e vinci una mano da 10 fiches. Poi **rimetti 500**.
+- **Primo blackjack**: è raro (circa una mano su 21), quindi serve pazienza, oppure la prova con le carte truccate descritta nella lezione 10.
+
+Quando un obiettivo si sblocca compare `★ Obiettivo sbloccato: ...` sotto il risultato della mano.
+
+---
+
+## 19. Lezione 16 - Più mazzi (la scarpa)
+
+**Obiettivo:** giocare con 6 mazzi mescolati insieme, e rimescolare solo quando restano poche carte, come al casinò. Finora ogni mano usava un mazzo nuovo.
+
+**Concetti nuovi**
+- **La scarpa** (in inglese *shoe*) è il contenitore dei mazzi da cui si pesca. Nel codice è una `struct Scarpa` con un array di 312 carte (52 × 6) e un contatore, `prossima`, che dice a che punto si è.
+- **Indirizzo di un elemento dell'array**: `&s->carte[k * NUM_CARTE]` è l'indirizzo della carta in posizione `k × 52`. Passandolo a `crea_mazzo`, ogni mazzo viene creato nella sua "fetta" dell'array, senza riscrivere nulla.
+- **`#define` calcolati**: `CARTE_SCARPA` vale `NUM_CARTE * NUM_MAZZI`. Se cambi `NUM_MAZZI` (per esempio a 8), tutto si adegua da solo.
+- **Una soglia**: la scarpa si rimescola quando restano meno di 78 carte, cioè un quarto. Con questa soglia una mano, anche con la divisione, non può finire le carte.
+- **Una funzione che cambia firma**: `turno_giocatore`, `turno_banco`, `pesca_carta`, `gioca_mano` ora ricevono la scarpa, invece di un array di carte e di un contatore a parte. Per questo si sostituisce tutta la parte finale di `main.c`.
+
+### Passo 1 - sostituisci `carte.h`
+
+Aggiunge le costanti e la `struct Scarpa` e le dichiarazioni delle tre nuove funzioni:
+
+```bash
+vi carte.h
+```
+
+`:set paste`, `gg`, `dG`, `i`, incolla:
 
 ```c
 #ifndef CARTE_H                                                 // include guard: se CARTE_H non esiste ancora...
 #define CARTE_H                                                 // ...lo definisce, così il file viene letto una volta sola
 
-#define NUM_CARTE 52                                            // carte nel mazzo
+#define NUM_CARTE 52                                            // carte in un mazzo
+#define NUM_MAZZI 6                                             // quanti mazzi si usano insieme (la "scarpa" dei casinò)
+#define CARTE_SCARPA (NUM_CARTE * NUM_MAZZI)                    // carte totali nella scarpa: 52 x 6 = 312
+#define SOGLIA_RIMESCOLA 78                                     // se restano meno carte di così (un quarto), si rimescola
 
 enum Seme { CUORI, QUADRI, FIORI, PICCHE };                     // i 4 semi
 
@@ -1595,9 +2400,569 @@ struct Carta {                                                  // una carta...
     enum Seme seme;                                             // ...e un seme
 };                                                              // fine della struct
 
+struct Scarpa {                                                 // la scarpa è il contenitore dei 6 mazzi: da qui si pescano le carte
+    struct Carta carte[CARTE_SCARPA];                           // tutte le carte, già mescolate
+    int prossima;                                               // posizione della prossima carta da pescare
+};                                                              // fine della struct
+
 void stampa_carta(struct Carta c);                              // dichiarazione: il corpo è in carte.c (qui solo nome e parametri)
 void crea_mazzo(struct Carta mazzo[]);                          // dichiarazione di crea_mazzo
 void mescola_mazzo(struct Carta mazzo[], int n);                // dichiarazione di mescola_mazzo
+void scarpa_rimescola(struct Scarpa *s);                        // dichiarazione: ricrea i 6 mazzi e li mescola
+struct Carta scarpa_pesca(struct Scarpa *s);                    // dichiarazione: prende la carta in cima alla scarpa
+int scarpa_da_rimescolare(const struct Scarpa *s);              // dichiarazione: vero se restano poche carte
+
+#endif                                                          // fine dell'include guard
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 2 - aggiungi le funzioni a `carte.c`
+
+```bash
+vi carte.c
+```
+
+Premi `G` (fondo del file), `o`, `Invio` (una riga vuota di separazione) e, con `:set paste` attivo, incolla:
+
+```c
+void scarpa_rimescola(struct Scarpa *s) {                       // riempie la scarpa con 6 mazzi completi e la mescola (s è un puntatore: la scarpa originale)
+    for (int k = 0; k < NUM_MAZZI; k++) {                       // per ognuno dei 6 mazzi...
+        crea_mazzo(&s->carte[k * NUM_CARTE]);                   // ...crea 52 carte a partire dalla posizione k x 52 (& prende l'indirizzo di quella posizione)
+    }                                                           // fine del ciclo dei mazzi
+    mescola_mazzo(s->carte, CARTE_SCARPA);                      // mescola tutte le 312 carte insieme
+    s->prossima = 0;                                            // si riparte dalla prima carta
+}                                                               // fine di scarpa_rimescola
+
+struct Carta scarpa_pesca(struct Scarpa *s) {                   // restituisce la carta in cima alla scarpa e passa alla successiva
+    if (s->prossima >= CARTE_SCARPA) {                          // sicurezza: se le carte sono finite del tutto...
+        scarpa_rimescola(s);                                    // ...ricrea la scarpa (non dovrebbe mai succedere)
+    }                                                           // fine del controllo
+    struct Carta c = s->carte[s->prossima];                     // prende la carta in cima
+    s->prossima++;                                              // la prossima volta si pesca quella dopo
+    return c;                                                   // restituisce la carta pescata
+}                                                               // fine di scarpa_pesca
+
+int scarpa_da_rimescolare(const struct Scarpa *s) {             // dice se restano poche carte (const: la funzione legge soltanto)
+    return CARTE_SCARPA - s->prossima < SOGLIA_RIMESCOLA;       // carte rimaste = totale - già pescate; vero se sono meno della soglia
+}                                                               // fine di scarpa_da_rimescolare
+```
+
+`Esc`, `:set nopaste`, `:wq`. Non serve toccare il resto: `crea_mazzo` e `mescola_mazzo` restano com'erano e vengono riusate.
+
+### Passo 3 - sostituisci la parte finale di `main.c`
+
+```bash
+cp main.c main_prima_scarpa.c
+vi main.c
+```
+
+Cancella da `turno_giocatore` fino alla fine:
+
+```text
+:/^void turno_giocatore/,$d
+```
+
+Premi `G`, `o`, e (con `:set paste` attivo) incolla tutto questo blocco: contiene `turno_giocatore`, `turno_banco`, `pesca_carta`, `leggi_puntata` (invariata), `gioca_mano`, `gioca_sessione` e `main`:
+
+```c
+void turno_giocatore(struct Mano *giocatore, struct Scarpa *scarpa) {   // turno del giocatore: la scarpa arriva come puntatore, così la funzione può pescare
+    char scelta;                                                // qui memorizza la lettera digitata (char = un solo carattere)
+    while (punteggio(*giocatore) < 21) {                        // finché il punteggio è sotto 21 (*giocatore = la mano a cui punta il puntatore)
+        printf("Vuoi pescare (c) o fermarti (s)? ");            // chiede cosa fare
+        if (scanf(" %c", &scelta) != 1) {                       // legge un carattere da tastiera (lo spazio prima di %c salta gli invii); se la lettura fallisce...
+            break;                                              // ...esce dal ciclo
+        }                                                       // fine del controllo
+        if (scelta == 'c') {                                    // se ha scritto "c" (i caratteri singoli vogliono gli apici '...')...
+            aggiungi_carta(giocatore, scarpa_pesca(scarpa));    // ...mette nella mano la carta in cima alla scarpa
+            mostra_mano("Giocatore", *giocatore, 0);            // mostra la mano aggiornata (*giocatore perché qui la mano arriva come puntatore)
+        } else if (scelta == 's') {                             // altrimenti, se ha scritto "s"...
+            break;                                              // ...esce dal ciclo: il giocatore si ferma
+        } else {                                                // in tutti gli altri casi...
+            printf("Scelta non valida.\n");                     // ...avvisa e richiede la scelta
+        }                                                       // fine della scelta
+    }                                                           // fine del ciclo
+    if (punteggio(*giocatore) > 21) {                           // a fine turno, se il punteggio supera 21...
+        printf(ROSSO "Hai sballato!\n" RESET);                  // ...il giocatore ha perso
+    }                                                           // fine del controllo
+}                                                               // fine di turno_giocatore
+
+void turno_banco(struct Mano *banco, struct Scarpa *scarpa) {   // turno del banco: pesca da solo, senza chiedere nulla
+    while (punteggio(*banco) < 17) {                            // finché ha meno di 17 punti...
+        aggiungi_carta(banco, scarpa_pesca(scarpa));            // ...pesca la carta in cima alla scarpa
+    }                                                           // fine del ciclo: il banco si ferma a 17 o più
+}                                                               // fine di turno_banco
+
+#define FICHES_INIZIALI 100                                     // fiches con cui si comincia
+
+void pesca_carta(struct Mano *m, struct Scarpa *scarpa) {       // prende la carta in cima alla scarpa e la mette nella mano
+    aggiungi_carta(m, scarpa_pesca(scarpa));                    // pesca e aggiunge
+}                                                               // fine di pesca_carta
+
+int leggi_puntata(int saldo) {                                  // chiede la puntata finché non è valida; restituisce 0 se il giocatore vuole uscire
+    int puntata;                                                // qui memorizza il numero scritto
+    while (1) {                                                 // ciclo infinito: se ne esce con return
+        printf("Fiches: %d. Quanto vuoi puntare (1-%d, 0 per uscire)? ", saldo, saldo);   // domanda
+        int letti = scanf("%d", &puntata);                      // legge un intero; restituisce quanti valori ha letto
+        if (letti == EOF) {                                     // se l'input è finito (es. Ctrl+D)...
+            return 0;                                           // ...esce come se avesse scelto 0
+        }                                                       // fine del controllo
+        if (letti != 1) {                                       // se non ha scritto un numero (es. una lettera)...
+            int c;                                              // carattere letto
+            while ((c = getchar()) != '\n' && c != EOF) {       // ...scarta il resto della riga, un carattere alla volta
+            }                                                   // il ciclo non ha altro da fare
+            printf("Scrivi un numero.\n");                      // avvisa
+            continue;                                           // torna all'inizio del ciclo e richiede
+        }                                                       // fine del controllo
+        if (puntata >= 0 && puntata <= saldo) {                 // se la puntata è tra 0 e il saldo...
+            return puntata;                                     // ...è valida: la restituisce
+        }                                                       // fine del controllo
+        printf("Puntata non valida.\n");                        // altrimenti avvisa e ricomincia
+    }                                                           // fine del ciclo
+}                                                               // fine di leggi_puntata
+
+int gioca_mano(int puntata, struct Scarpa *scarpa, int *blackjack) {   // gioca una mano intera; restituisce di quante fiches cambia il saldo (+ vinte, - perse)
+    struct Mano giocatore;                                      // la mano del giocatore
+    struct Mano banco;                                          // la mano del banco
+    giocatore.numero = 0;                                       // all'inizio è vuota
+    banco.numero = 0;                                           // anche questa
+    *blackjack = 0;                                             // per ora niente blackjack (*blackjack = la variabile di chi ha chiamato la funzione)
+
+    pesca_carta(&giocatore, scarpa);                            // si distribuisce come al tavolo: giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco...
+    pesca_carta(&giocatore, scarpa);                            // ...giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco
+
+    mostra_mano("Banco", banco, 1);                             // mostra il banco con la seconda carta coperta (1 = nascondi)
+    mostra_mano("Giocatore", giocatore, 0);                     // mostra il giocatore con tutte le carte scoperte (0 = non nascondere)
+
+    int bj_giocatore = ha_blackjack(giocatore);                 // 1 se il giocatore ha un blackjack naturale, altrimenti 0
+    int bj_banco = ha_blackjack(banco);                         // lo stesso per il banco
+    if (bj_giocatore || bj_banco) {                             // se almeno uno ha blackjack (|| = "o")...
+        mostra_mano("Banco", banco, 0);                         // ...si scoprono subito le carte del banco
+        if (bj_giocatore && bj_banco) {                         // se ce l'hanno entrambi...
+            printf(GIALLO "Blackjack per entrambi: pareggio.\n" RESET);      // ...pareggio
+            return 0;                                           // il saldo non cambia
+        }                                                       // fine del controllo
+        if (bj_giocatore) {                                     // se ce l'ha solo il giocatore...
+            printf(VERDE "BLACKJACK! Vinci 3 a 2.\n" RESET);    // ...vince con il pagamento maggiorato
+            *blackjack = 1;                                     // segnala a chi ha chiamato che c'è stato un blackjack
+            return puntata * 3 / 2;                             // puntata x 3 / 2 (divisione tra interi: arrotonda per difetto)
+        }                                                       // fine del controllo
+        printf(ROSSO "Il banco ha blackjack.\n" RESET);         // altrimenti ce l'ha solo il banco
+        return -puntata;                                        // il giocatore perde la puntata
+    }                                                           // fine del controllo
+
+    turno_giocatore(&giocatore, scarpa);                        // gioca il giocatore (pesca o si ferma)
+
+    if (punteggio(giocatore) > 21) {                            // se il giocatore ha sballato...
+        printf(ROSSO "\nIl banco vince.\n" RESET);              // ...perde, senza che il banco giochi
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+
+    turno_banco(&banco, scarpa);                                // gioca il banco (pesca fino a 17)
+    mostra_mano("Banco", banco, 0);                             // mostra la mano completa del banco
+
+    int p_giocatore = punteggio(giocatore);                     // punteggio finale del giocatore
+    int p_banco = punteggio(banco);                             // punteggio finale del banco
+    if (p_banco > 21) {                                         // se il banco ha sballato...
+        printf(VERDE "\nIl banco sballa: hai vinto!\n" RESET);   // ...vince il giocatore
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore > p_banco) {                                // se il giocatore ha più punti...
+        printf(VERDE "\nHai vinto!\n" RESET);                   // ...vince
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore < p_banco) {                                // se ne ha meno...
+        printf(ROSSO "\nIl banco vince.\n" RESET);              // ...perde
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+    printf(GIALLO "\nPareggio.\n" RESET);                      // altrimenti i punteggi sono uguali
+    return 0;                                                   // il saldo non cambia
+}                                                               // fine di gioca_mano
+
+void gioca_sessione(struct Obiettivi *obiettivi) {              // una sessione di gioco: si gioca finché ci sono fiches o si esce
+    int fiches = FICHES_INIZIALI;                               // il saldo del giocatore
+    struct Statistiche stats;                                   // le statistiche di questa sessione
+    stats_init(&stats, fiches);                                 // le azzera (&stats = indirizzo della struttura)
+    struct Scarpa scarpa;                                       // la scarpa con i 6 mazzi
+    scarpa_rimescola(&scarpa);                                  // la riempie e la mescola
+
+    while (fiches > 0) {                                        // finché ci sono fiches...
+        int puntata = leggi_puntata(fiches);                    // ...chiede la puntata
+        if (puntata == 0) {                                     // se il giocatore vuole uscire...
+            break;                                              // ...esce dal ciclo
+        }                                                       // fine del controllo
+        if (scarpa_da_rimescolare(&scarpa)) {                   // se restano poche carte nella scarpa...
+            scarpa_rimescola(&scarpa);                          // ...la rimescola...
+            printf(GIALLO "\nIl mazzo viene rimescolato.\n" RESET);   // ...e lo comunica
+        }                                                       // fine del controllo
+        int blackjack = 0;                                      // gioca_mano ci scriverà 1 se il giocatore fa blackjack
+        int variazione = gioca_mano(puntata, &scarpa, &blackjack);   // gioca la mano: restituisce quante fiches si vincono (+) o si perdono (-)
+        fiches += variazione;                                   // aggiorna il saldo
+        stats_registra(&stats, variazione, fiches, blackjack);  // aggiorna le statistiche con il risultato della mano
+        if (variazione > 0) {                                   // se è positiva...
+            printf(VERDE "\nHai vinto %d fiches\n\n" RESET, variazione);       // ...hai vinto: mostra quante
+        } else if (variazione < 0) {                            // se è negativa...
+            printf(ROSSO "\nHai perso %d fiches\n\n" RESET, -variazione);      // ...hai perso: mostra quante
+        } else {                                                // se è zero...
+            printf(GIALLO "\nLa puntata ti torna indietro\n\n" RESET);          // ...nessun cambiamento
+        }                                                       // fine dei controlli
+        obiettivi_controlla(obiettivi, &stats);                 // controlla se la mano ha sbloccato qualche obiettivo
+    }                                                           // fine del ciclo
+
+    if (fiches == 0) {                                          // se il saldo è finito...
+        printf("Hai finito le fiches. Fine della partita.\n\n");  // ...game over
+    } else {                                                    // altrimenti il giocatore è uscito di sua volontà
+        printf("Esci dalla partita con %d fiches.\n\n", fiches); // saluto con il saldo finale
+    }                                                           // fine del controllo
+    stats_mostra(&stats, fiches);                               // a fine sessione mostra il riepilogo
+}                                                               // fine di gioca_sessione
+
+int main(void) {                                                // il programma parte da qui
+    srand((unsigned)time(NULL));                                // seme casuale basato sull'orario (una volta sola, all'avvio)
+    struct Obiettivi obiettivi;                                 // gli obiettivi restano sbloccati finché il programma è aperto
+    obiettivi_init(&obiettivi);                                 // all'inizio sono tutti bloccati
+    mostra_logo();                                              // mostra il logo all'avvio
+
+    int scelta = menu_principale();                             // mostra il menu e legge la scelta
+    while (scelta != 4) {                                       // finché non sceglie "Esci"...
+        if (scelta == 1) {                                      // se ha scelto "Gioca"...
+            gioca_sessione(&obiettivi);                         // ...inizia una nuova sessione
+        } else if (scelta == 2) {                               // se ha scelto "Regole"...
+            mostra_regole();                                    // ...le mostra
+        } else {                                                // altrimenti ha scelto "Obiettivi"...
+            obiettivi_mostra(&obiettivi);                       // ...li mostra
+        }                                                       // fine della scelta
+        scelta = menu_principale();                             // torna al menu
+    }                                                           // fine del ciclo
+    printf("\nAlla prossima!\n");                              // saluto finale
+    return 0;                                                   // fine, tutto ok
+}                                                               // fine di main
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+Cosa è cambiato, rispetto a prima: dove c'era `struct Carta mazzo[]` e `int *prossima` ora c'è `struct Scarpa *scarpa`, e dove c'era `mazzo[*prossima]` ora c'è `scarpa_pesca(scarpa)`. `gioca_mano` non crea più il mazzo, e `gioca_sessione` crea la scarpa una volta sola, la rimescola quando serve e scrive "Il mazzo viene rimescolato."
+
+### Passo 4 - compila e prova
+
+```bash
+make
+./whitejack
+```
+
+`make` ricompila quasi tutto, perché `carte.h` è incluso quasi ovunque: è corretto.
+
+Per vedere il rimescolamento senza giocare per ore, in `carte.h` cambia temporaneamente `#define SOGLIA_RIMESCOLA 78` in `#define SOGLIA_RIMESCOLA 400`: a ogni mano compare "Il mazzo viene rimescolato." Poi **rimetti 78**.
+
+---
+
+## 20. Lezione 17 - Raddoppio e divisione
+
+**Obiettivo:** due mosse del blackjack vero.
+
+- **Raddoppio** (*double down*): alla prima decisione puoi raddoppiare la puntata, prendi **una sola carta** e il turno finisce. Si digita `d`.
+- **Divisione** (*split*): con due carte uguali (stesso numero o stessa figura, per esempio due 8 o due Re) puoi dividerle in **due mani**, ognuna con la sua puntata e una nuova carta. Si digita `p`.
+
+Regole che adottiamo (semplificate rispetto al casinò):
+- Le due mosse si possono fare solo come **prima azione**, con due carte in mano, e solo se hai abbastanza fiches per la seconda puntata (saldo almeno uguale al doppio della puntata).
+- Dopo la divisione non si può raddoppiare né dividere di nuovo. Un 21 dopo la divisione conta come un normale 21 (non è blackjack).
+- Dopo una divisione ogni mano si risolve da sola contro il banco, e la variazione finale è la somma delle due.
+
+**Concetti nuovi**
+- **`enum` come valore di ritorno**: `turno_giocatore` restituisce un `enum Azione` (`FERMATO`, `RADDOPPIATO` o `DIVISO`), così `gioca_mano` sa cosa è successo e decide cosa fare.
+- **Una scelta che compare solo quando serve**: la domanda `Vuoi pescare (c) o fermarti (s), raddoppiare (d), dividere (p)?` si costruisce con più `printf` e `if`, e dopo la prima pescata `puo_raddoppiare` e `puo_dividere` diventano 0.
+- **Array di strutture**: `struct Mano mani[2]` e `int puntate[2]` contengono le (al massimo) due mani e le loro puntate. Un ciclo `for` le tratta tutte allo stesso modo.
+- **Copia di una `struct`**: `mani[0] = giocatore;` copia tutta la mano.
+- **Operatore `? :`**: `(i == 0) ? "Prima mano" : "Seconda mano"` sceglie il titolo in una riga sola.
+- **Funzione d'appoggio `static`**: `risolvi_mano` confronta una mano con il banco, stampa l'esito e restituisce la variazione, e viene usata una volta per ogni mano.
+- **`;` al posto di `,` negli intervalli di vi**: `:/^void turno_giocatore/;/^}/d` cancella un'intera funzione, dalla riga che inizia con `void turno_giocatore` fino alla prima riga che inizia con `}`. Con il `;` la seconda ricerca parte dalla prima riga trovata (con la virgola partirebbe dal cursore, con effetti imprevedibili).
+
+### Passo 1 - sostituisci `turno_giocatore`
+
+```bash
+cp main.c main_prima_raddoppio.c
+vi main.c
+```
+
+Tieni `:set paste` attivo. Scrivi:
+
+```text
+:/^void turno_giocatore/;/^}/d
+```
+
+Il cursore finisce sulla riga vuota subito dopo. Premi `O` (apre una riga **sopra**) e incolla il nuovo `enum` e la nuova funzione:
+
+```c
+enum Azione { FERMATO, RADDOPPIATO, DIVISO };                   // come finisce il turno del giocatore: si è fermato, ha raddoppiato o vuole dividere
+
+enum Azione turno_giocatore(const char *titolo, struct Mano *giocatore, struct Scarpa *scarpa, int puo_raddoppiare, int puo_dividere) {   // turno del giocatore: restituisce l'azione scelta
+    enum Azione azione = FERMATO;                               // se non succede altro, il turno finisce con "fermato"
+    char scelta;                                                // qui memorizza la lettera digitata (char = un solo carattere)
+    while (punteggio(*giocatore) < 21) {                        // finché il punteggio è sotto 21 (*giocatore = la mano a cui punta il puntatore)
+        printf("Vuoi pescare (c) o fermarti (s)");              // inizio della domanda (senza andare a capo)
+        if (puo_raddoppiare) {                                  // se il raddoppio è possibile...
+            printf(", raddoppiare (d)");                        // ...lo propone
+        }                                                       // fine del controllo
+        if (puo_dividere) {                                     // se la divisione è possibile...
+            printf(", dividere (p)");                           // ...la propone
+        }                                                       // fine del controllo
+        printf("? ");                                           // fine della domanda
+        if (scanf(" %c", &scelta) != 1) {                       // legge un carattere da tastiera (lo spazio prima di %c salta gli invii); se la lettura fallisce...
+            break;                                              // ...esce dal ciclo
+        }                                                       // fine del controllo
+        if (scelta == 'c') {                                    // se ha scritto "c" (i caratteri singoli vogliono gli apici '...')...
+            aggiungi_carta(giocatore, scarpa_pesca(scarpa));    // ...mette nella mano la carta in cima alla scarpa
+            mostra_mano(titolo, *giocatore, 0);                 // mostra la mano aggiornata (*giocatore perché qui la mano arriva come puntatore)
+            puo_raddoppiare = 0;                                // dopo aver pescato non si può più raddoppiare...
+            puo_dividere = 0;                                   // ...né dividere
+        } else if (scelta == 's') {                             // altrimenti, se ha scritto "s"...
+            break;                                              // ...esce dal ciclo: il giocatore si ferma
+        } else if (scelta == 'd' && puo_raddoppiare) {          // altrimenti, se ha scritto "d" ed è permesso...
+            printf(GIALLO "Raddoppio: la puntata raddoppia e prendi una sola carta.\n" RESET);   // ...lo annuncia...
+            aggiungi_carta(giocatore, scarpa_pesca(scarpa));    // ...prende UNA sola carta...
+            mostra_mano(titolo, *giocatore, 0);                 // ...la mostra...
+            azione = RADDOPPIATO;                               // ...segnala il raddoppio (la puntata la raddoppia gioca_mano)...
+            break;                                              // ...e il turno finisce
+        } else if (scelta == 'p' && puo_dividere) {             // altrimenti, se ha scritto "p" ed è permesso...
+            azione = DIVISO;                                    // ...segnala la divisione (la fa gioca_mano)...
+            break;                                              // ...e il turno finisce
+        } else {                                                // in tutti gli altri casi (lettera sbagliata o azione non permessa)...
+            printf("Scelta non valida.\n");                     // ...avvisa e richiede la scelta
+        }                                                       // fine della scelta
+    }                                                           // fine del ciclo
+    if (punteggio(*giocatore) > 21) {                           // a fine turno, se il punteggio supera 21...
+        printf(ROSSO "Hai sballato!\n" RESET);                  // ...il giocatore ha perso
+    }                                                           // fine del controllo
+    return azione;                                              // restituisce come è finito il turno
+}                                                               // fine di turno_giocatore
+```
+
+### Passo 2 - sostituisci `gioca_mano`
+
+Scrivi:
+
+```text
+:/^int gioca_mano/;/^}/d
+```
+
+Premi `O` e incolla la funzione d'appoggio `risolvi_mano` e la nuova `gioca_mano`:
+
+```c
+static int risolvi_mano(int p_giocatore, int p_banco, int puntata, const char *etichetta) {   // confronta una mano con il banco, stampa l'esito e restituisce la variazione di fiches
+    if (p_giocatore > 21) {                                     // se il giocatore ha sballato...
+        printf(ROSSO "\n%sIl banco vince.\n" RESET, etichetta);   // ...vince il banco (%s inserisce l'etichetta, vuota se la mano è una sola)
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+    if (p_banco > 21) {                                         // se il banco ha sballato...
+        printf(VERDE "\n%sIl banco sballa: hai vinto!\n" RESET, etichetta);   // ...vince il giocatore
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore > p_banco) {                                // se il giocatore ha più punti...
+        printf(VERDE "\n%sHai vinto!\n" RESET, etichetta);      // ...vince
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore < p_banco) {                                // se ne ha meno...
+        printf(ROSSO "\n%sIl banco vince.\n" RESET, etichetta); // ...perde
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+    printf(GIALLO "\n%sPareggio.\n" RESET, etichetta);          // altrimenti i punteggi sono uguali
+    return 0;                                                   // il saldo non cambia
+}                                                               // fine di risolvi_mano
+
+int gioca_mano(int puntata, int saldo, struct Scarpa *scarpa, int *blackjack) {   // gioca una mano intera; restituisce di quante fiches cambia il saldo (+ vinte, - perse)
+    struct Mano giocatore;                                      // la mano del giocatore
+    struct Mano banco;                                          // la mano del banco
+    giocatore.numero = 0;                                       // all'inizio è vuota
+    banco.numero = 0;                                           // anche questa
+    *blackjack = 0;                                             // per ora niente blackjack (*blackjack = la variabile di chi ha chiamato la funzione)
+
+    pesca_carta(&giocatore, scarpa);                            // si distribuisce come al tavolo: giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco...
+    pesca_carta(&giocatore, scarpa);                            // ...giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco
+
+    mostra_mano("Banco", banco, 1);                             // mostra il banco con la seconda carta coperta (1 = nascondi)
+    mostra_mano("Giocatore", giocatore, 0);                     // mostra il giocatore con tutte le carte scoperte (0 = non nascondere)
+
+    int bj_giocatore = ha_blackjack(giocatore);                 // 1 se il giocatore ha un blackjack naturale, altrimenti 0
+    int bj_banco = ha_blackjack(banco);                         // lo stesso per il banco
+    if (bj_giocatore || bj_banco) {                             // se almeno uno ha blackjack (|| = "o")...
+        mostra_mano("Banco", banco, 0);                         // ...si scoprono subito le carte del banco
+        if (bj_giocatore && bj_banco) {                         // se ce l'hanno entrambi...
+            printf(GIALLO "Blackjack per entrambi: pareggio.\n" RESET);      // ...pareggio
+            return 0;                                           // il saldo non cambia
+        }                                                       // fine del controllo
+        if (bj_giocatore) {                                     // se ce l'ha solo il giocatore...
+            printf(VERDE "BLACKJACK! Vinci 3 a 2.\n" RESET);    // ...vince con il pagamento maggiorato
+            *blackjack = 1;                                     // segnala a chi ha chiamato che c'è stato un blackjack
+            return puntata * 3 / 2;                             // puntata x 3 / 2 (divisione tra interi: arrotonda per difetto)
+        }                                                       // fine del controllo
+        printf(ROSSO "Il banco ha blackjack.\n" RESET);         // altrimenti ce l'ha solo il banco
+        return -puntata;                                        // il giocatore perde la puntata
+    }                                                           // fine del controllo
+
+    struct Mano mani[2];                                        // le mani del giocatore: una sola, oppure due dopo la divisione
+    int puntate[2];                                             // la puntata di ogni mano
+    int num_mani = 1;                                           // all'inizio il giocatore ha una mano sola
+    mani[0] = giocatore;                                        // la prima mano è quella appena distribuita (la struct viene copiata)
+    puntate[0] = puntata;                                       // con la puntata iniziale
+
+    int puo_raddoppiare = (saldo >= 2 * puntata);               // si può raddoppiare solo se restano fiches per coprire la seconda puntata
+    int puo_dividere = puo_raddoppiare && giocatore.carte[0].valore == giocatore.carte[1].valore;   // si può dividere con due carte uguali e fiches sufficienti
+    enum Azione azione = turno_giocatore("Giocatore", &mani[0], scarpa, puo_raddoppiare, puo_dividere);   // gioca il giocatore e dice come è finito il turno
+
+    if (azione == RADDOPPIATO) {                                // se ha raddoppiato...
+        puntate[0] = puntata * 2;                               // ...la puntata raddoppia
+    } else if (azione == DIVISO) {                              // se ha diviso...
+        num_mani = 2;                                           // ...adesso le mani sono due
+        mani[1].numero = 0;                                     // la seconda mano parte vuota...
+        aggiungi_carta(&mani[1], mani[0].carte[1]);             // ...e riceve la seconda carta della prima mano
+        mani[0].numero = 1;                                     // la prima mano resta con una carta sola
+        puntate[1] = puntata;                                   // la seconda mano ha la stessa puntata della prima
+        pesca_carta(&mani[0], scarpa);                          // ogni mano riceve una nuova carta
+        pesca_carta(&mani[1], scarpa);                          // anche la seconda
+        for (int i = 0; i < 2; i++) {                           // si gioca prima una mano, poi l'altra
+            const char *titolo = (i == 0) ? "Prima mano" : "Seconda mano";   // il titolo da mostrare (condizione ? se_vero : se_falso)
+            mostra_mano(titolo, mani[i], 0);                    // mostra la mano
+            turno_giocatore(titolo, &mani[i], scarpa, 0, 0);    // la gioca (0, 0: dopo la divisione niente raddoppio né nuova divisione)
+        }                                                       // fine del ciclo delle mani
+    }                                                           // fine dei controlli
+
+    int qualcuna_in_gioco = 0;                                  // 1 se almeno una mano non ha sballato
+    for (int i = 0; i < num_mani; i++) {                        // per ogni mano...
+        if (punteggio(mani[i]) <= 21) {                         // ...se non ha sballato...
+            qualcuna_in_gioco = 1;                              // ...il banco dovrà giocare
+        }                                                       // fine del controllo
+    }                                                           // fine del ciclo
+    if (qualcuna_in_gioco) {                                    // se c'è almeno una mano in gioco...
+        turno_banco(&banco, scarpa);                            // ...gioca il banco (pesca fino a 17)
+        mostra_mano("Banco", banco, 0);                         // ...e mostra la sua mano completa
+    }                                                           // fine del controllo
+
+    int p_banco = punteggio(banco);                             // punteggio finale del banco
+    int totale = 0;                                             // somma delle variazioni di tutte le mani
+    for (int i = 0; i < num_mani; i++) {                        // per ogni mano del giocatore...
+        const char *etichetta = "";                             // con una mano sola non serve nessuna etichetta
+        if (num_mani == 2) {                                    // dopo la divisione...
+            etichetta = (i == 0) ? "Prima mano: " : "Seconda mano: ";   // ...si indica di quale mano si parla
+        }                                                       // fine del controllo
+        totale += risolvi_mano(punteggio(mani[i]), p_banco, puntate[i], etichetta);   // confronta con il banco e somma il risultato
+    }                                                           // fine del ciclo
+    return totale;                                              // restituisce quanto cambia il saldo
+}                                                               // fine di gioca_mano
+```
+
+### Passo 3 - passa il saldo a `gioca_mano`
+
+`gioca_mano` deve sapere quante fiches hai, per decidere se puoi raddoppiare o dividere. Scrivi (nota il `\&`, che in vi significa "una `&` vera"):
+
+```text
+:%s/gioca_mano(puntata, &scarpa, &blackjack)/gioca_mano(puntata, fiches, \&scarpa, \&blackjack)/
+```
+
+Dovrebbe dirti che ha fatto 1 sostituzione. `Esc`, `:set nopaste`, `:wq`.
+
+### Passo 4 - aggiorna le regole nel menu
+
+La voce "Regole" del menu deve spiegare anche i nuovi comandi:
+
+```bash
+vi menu.c
+```
+
+Con `:set paste` attivo:
+
+```text
+:/^void mostra_regole/;/^}/d
+```
+
+Poi `O` e incolla:
+
+```c
+void mostra_regole(void) {                                      // spiega le regole del gioco e i comandi
+    printf("\n" GIALLO "Regole" RESET "\n");                    // titolo in giallo
+    printf("- Vince chi si avvicina di più a 21 senza superarlo.\n");                  // obiettivo
+    printf("- Le carte da 2 a 10 valgono il loro numero; J, Q, K valgono 10.\n");       // valori
+    printf("- L'Asso vale 11, oppure 1 se con 11 si supererebbe 21.\n");                // asso
+    printf("- Chi supera 21 sballa e perde.\n");                                        // sballo
+    printf("- Il banco pesca finché ha meno di 17 punti.\n");                          // banco
+    printf("- Un 21 con le prime due carte è un blackjack: paga 3 a 2.\n");            // blackjack
+    printf("- Con un pareggio la puntata ti torna indietro.\n");                        // pareggio
+    printf("- Si gioca con 6 mazzi, rimescolati quando restano poche carte.\n\n");      // scarpa
+    printf(GIALLO "Comandi" RESET "\n");                        // titolo in giallo
+    printf("- c = pesca una carta\n");                                                 // pescare
+    printf("- s = fermati\n");                                                         // stare
+    printf("- d = raddoppia: la puntata raddoppia e prendi una sola carta.\n");        // double down
+    printf("  Si può solo con le prime due carte e se hai abbastanza fiches.\n");      // condizioni del raddoppio
+    printf("- p = dividi: con due carte uguali (stesso numero o figura) giochi due\n"); // split
+    printf("  mani, ognuna con la sua puntata. Serve avere abbastanza fiches.\n");     // condizioni della divisione
+    printf("  Dopo la divisione non si può raddoppiare.\n\n");                         // limite
+}                                                               // fine di mostra_regole
+```
+
+`Esc`, `:set nopaste`, `:wq`.
+
+### Passo 5 - compila e prova
+
+```bash
+make
+./whitejack
+```
+
+**Provare il raddoppio.** Punta 10 (con 100 fiches): alla prima decisione la domanda deve offrire `raddoppiare (d)`. Premi `d`: ricevi una sola carta e il turno finisce, e la vittoria o la sconfitta vale il doppio. Se punti più della metà delle fiches (per esempio 60 su 100), `d` non viene offerto e, se lo scrivi, compare `Scelta non valida.`
+
+**Provare la divisione.** Una coppia esce in circa una mano su 17, quindi per provarla subito inserisci temporaneamente una carta uguale: `/mostra_mano("Banco", banco, 1)`, `Invio`, `O` e incolla
+
+```c
+    giocatore.carte[1] = giocatore.carte[0];                    // PROVA TEMPORANEA: forza una coppia
+```
+
+Ora ogni mano inizia con una coppia: premi `p`, gioca le due mani e controlla che ognuna abbia il suo risultato ("Prima mano: ..." e "Seconda mano: ...") e che il totale sia la somma. Poi **togli la riga di prova**, altrimenti hai sempre una coppia.
+
+Tre controlli utili:
+1. Dopo la divisione la domanda **non** deve offrire `d` né `p`.
+2. Punta più di metà fiches: `p` non viene offerto.
+3. Se la prima carta e la seconda sono uguali ma hai già pescato, `p` non viene più offerto.
+
+Cerca anche gli obiettivi: la **serie di vittorie** si aggiorna con il risultato totale della mano (se dividi e vinci una mano e ne perdi una, il totale è 0 e la serie non cambia).
+
+---
+
+## 21. Codice completo finale
+
+Questi sono i file del progetto a fine guida, tutti compilati con `-Wall -Wextra` senza avvisi. Servono per controllare il tuo lavoro o per ripartire da una versione sicura.
+
+### `carte.h`
+
+```c
+#ifndef CARTE_H                                                 // include guard: se CARTE_H non esiste ancora...
+#define CARTE_H                                                 // ...lo definisce, così il file viene letto una volta sola
+
+#define NUM_CARTE 52                                            // carte in un mazzo
+#define NUM_MAZZI 6                                             // quanti mazzi si usano insieme (la "scarpa" dei casinò)
+#define CARTE_SCARPA (NUM_CARTE * NUM_MAZZI)                    // carte totali nella scarpa: 52 x 6 = 312
+#define SOGLIA_RIMESCOLA 78                                     // se restano meno carte di così (un quarto), si rimescola
+
+enum Seme { CUORI, QUADRI, FIORI, PICCHE };                     // i 4 semi
+
+struct Carta {                                                  // una carta...
+    int valore;                                                 // ...ha un valore da 1 a 13
+    enum Seme seme;                                             // ...e un seme
+};                                                              // fine della struct
+
+struct Scarpa {                                                 // la scarpa è il contenitore dei 6 mazzi: da qui si pescano le carte
+    struct Carta carte[CARTE_SCARPA];                           // tutte le carte, già mescolate
+    int prossima;                                               // posizione della prossima carta da pescare
+};                                                              // fine della struct
+
+void stampa_carta(struct Carta c);                              // dichiarazione: il corpo è in carte.c (qui solo nome e parametri)
+void crea_mazzo(struct Carta mazzo[]);                          // dichiarazione di crea_mazzo
+void mescola_mazzo(struct Carta mazzo[], int n);                // dichiarazione di mescola_mazzo
+void scarpa_rimescola(struct Scarpa *s);                        // dichiarazione: ricrea i 6 mazzi e li mescola
+struct Carta scarpa_pesca(struct Scarpa *s);                    // dichiarazione: prende la carta in cima alla scarpa
+int scarpa_da_rimescolare(const struct Scarpa *s);              // dichiarazione: vero se restano poche carte
 
 #endif                                                          // fine dell'include guard
 ```
@@ -1636,6 +3001,27 @@ void mescola_mazzo(struct Carta mazzo[], int n) {               // mescola le pr
         mazzo[j] = tmp;                                         // mette la carta salvata in posizione j
     }                                                           // fine del ciclo
 }                                                               // fine di mescola_mazzo
+
+void scarpa_rimescola(struct Scarpa *s) {                       // riempie la scarpa con 6 mazzi completi e la mescola (s è un puntatore: la scarpa originale)
+    for (int k = 0; k < NUM_MAZZI; k++) {                       // per ognuno dei 6 mazzi...
+        crea_mazzo(&s->carte[k * NUM_CARTE]);                   // ...crea 52 carte a partire dalla posizione k x 52 (& prende l'indirizzo di quella posizione)
+    }                                                           // fine del ciclo dei mazzi
+    mescola_mazzo(s->carte, CARTE_SCARPA);                      // mescola tutte le 312 carte insieme
+    s->prossima = 0;                                            // si riparte dalla prima carta
+}                                                               // fine di scarpa_rimescola
+
+struct Carta scarpa_pesca(struct Scarpa *s) {                   // restituisce la carta in cima alla scarpa e passa alla successiva
+    if (s->prossima >= CARTE_SCARPA) {                          // sicurezza: se le carte sono finite del tutto...
+        scarpa_rimescola(s);                                    // ...ricrea la scarpa (non dovrebbe mai succedere)
+    }                                                           // fine del controllo
+    struct Carta c = s->carte[s->prossima];                     // prende la carta in cima
+    s->prossima++;                                              // la prossima volta si pesca quella dopo
+    return c;                                                   // restituisce la carta pescata
+}                                                               // fine di scarpa_pesca
+
+int scarpa_da_rimescolare(const struct Scarpa *s) {             // dice se restano poche carte (const: la funzione legge soltanto)
+    return CARTE_SCARPA - s->prossima < SOGLIA_RIMESCOLA;       // carte rimaste = totale - già pescate; vero se sono meno della soglia
+}                                                               // fine di scarpa_da_rimescolare
 ```
 
 ### `mano.h`
@@ -1797,52 +3183,292 @@ void mostra_mano(const char *titolo, struct Mano m, int nascondi_seconda) {   //
 }                                                               // fine di mostra_mano
 ```
 
+### `menu.h`
+
+```c
+#ifndef MENU_H                                                  // include guard
+#define MENU_H                                                  // definisce MENU_H
+
+void mostra_logo(void);                                         // disegna il logo WHITE JACK
+int menu_principale(void);                                      // mostra il menu e restituisce la scelta: 1 = Gioca, 2 = Regole, 3 = Obiettivi, 4 = Esci
+void mostra_regole(void);                                       // spiega le regole del gioco
+
+#endif                                                          // fine dell'include guard
+```
+
+### `menu.c`
+
+```c
+#include <stdio.h>                                              // printf, scanf, getchar
+#include "grafica.h"                                            // i colori (GIALLO, ROSSO, RESET)
+#include "menu.h"                                               // le dichiarazioni di questo modulo
+
+void mostra_logo(void) {                                        // disegna il logo, 5 righe: WHITE in giallo e JACK in rosso
+    printf("\n");                                               // riga vuota sopra il logo
+    printf("  " GIALLO "█   █ █   █ ███ █████ █████" RESET "   " ROSSO "  ███  ███   ████ █   █" RESET "\n");                    // riga 0 del logo
+    printf("  " GIALLO "█   █ █   █  █    █   █    " RESET "   " ROSSO "   █  █   █ █     █  █" RESET "\n");                    // riga 1 del logo
+    printf("  " GIALLO "█ █ █ █████  █    █   ████ " RESET "   " ROSSO "   █  █████ █     ███" RESET "\n");                    // riga 2 del logo
+    printf("  " GIALLO "██ ██ █   █  █    █   █    " RESET "   " ROSSO "█  █  █   █ █     █  █" RESET "\n");                    // riga 3 del logo
+    printf("  " GIALLO "█   █ █   █ ███   █   █████" RESET "   " ROSSO " ██   █   █  ████ █   █" RESET "\n");                    // riga 4 del logo
+    printf("\n  Blackjack for the terminal\n\n");                // sottotitolo
+}                                                               // fine di mostra_logo
+
+int menu_principale(void) {                                     // mostra il menu e restituisce la scelta valida (da 1 a 4)
+    int scelta;                                                 // qui memorizza il numero scritto
+    while (1) {                                                 // ciclo infinito: se ne esce con return
+        printf("  1) Gioca\n");                                 // prima voce
+        printf("  2) Regole\n");                                // seconda voce
+        printf("  3) Obiettivi\n");                             // terza voce
+        printf("  4) Esci\n");                                  // quarta voce
+        printf("\n  Scegli (1-4): ");                           // domanda
+        int letti = scanf("%d", &scelta);                       // legge un intero; restituisce quanti valori ha letto
+        if (letti == EOF) {                                     // se l'input è finito (es. Ctrl+D)...
+            return 4;                                           // ...esce come se avesse scelto "Esci"
+        }                                                       // fine del controllo
+        if (letti != 1) {                                       // se non ha scritto un numero...
+            int c;                                              // carattere letto
+            while ((c = getchar()) != '\n' && c != EOF) {       // ...scarta il resto della riga
+            }                                                   // il ciclo non ha altro da fare
+        } else if (scelta >= 1 && scelta <= 4) {                // altrimenti, se il numero è tra 1 e 4...
+            return scelta;                                      // ...è valido: lo restituisce
+        }                                                       // fine dei controlli
+        printf("\n  Scelta non valida.\n\n");                    // avvisa e ricomincia
+    }                                                           // fine del ciclo
+}                                                               // fine di menu_principale
+
+void mostra_regole(void) {                                      // spiega le regole del gioco e i comandi
+    printf("\n" GIALLO "Regole" RESET "\n");                    // titolo in giallo
+    printf("- Vince chi si avvicina di più a 21 senza superarlo.\n");                  // obiettivo
+    printf("- Le carte da 2 a 10 valgono il loro numero; J, Q, K valgono 10.\n");       // valori
+    printf("- L'Asso vale 11, oppure 1 se con 11 si supererebbe 21.\n");                // asso
+    printf("- Chi supera 21 sballa e perde.\n");                                        // sballo
+    printf("- Il banco pesca finché ha meno di 17 punti.\n");                          // banco
+    printf("- Un 21 con le prime due carte è un blackjack: paga 3 a 2.\n");            // blackjack
+    printf("- Con un pareggio la puntata ti torna indietro.\n");                        // pareggio
+    printf("- Si gioca con 6 mazzi, rimescolati quando restano poche carte.\n\n");      // scarpa
+    printf(GIALLO "Comandi" RESET "\n");                        // titolo in giallo
+    printf("- c = pesca una carta\n");                                                 // pescare
+    printf("- s = fermati\n");                                                         // stare
+    printf("- d = raddoppia: la puntata raddoppia e prendi una sola carta.\n");        // double down
+    printf("  Si può solo con le prime due carte e se hai abbastanza fiches.\n");      // condizioni del raddoppio
+    printf("- p = dividi: con due carte uguali (stesso numero o figura) giochi due\n"); // split
+    printf("  mani, ognuna con la sua puntata. Serve avere abbastanza fiches.\n");     // condizioni della divisione
+    printf("  Dopo la divisione non si può raddoppiare.\n\n");                         // limite
+}                                                               // fine di mostra_regole
+```
+
+### `stats.h`
+
+```c
+#ifndef STATS_H                                                 // include guard
+#define STATS_H                                                 // definisce STATS_H
+
+struct Statistiche {                                            // i numeri di una sessione di gioco
+    int mani;                                                   // mani giocate
+    int vinte;                                                  // mani vinte
+    int perse;                                                  // mani perse
+    int pareggi;                                                // mani pareggiate
+    int blackjack;                                              // blackjack naturali ottenuti
+    int record;                                                 // il massimo di fiches raggiunto
+    int serie;                                                  // vittorie consecutive in corso
+    int serie_max;                                              // la serie di vittorie consecutive più lunga
+};                                                              // fine della struct
+
+void stats_init(struct Statistiche *s, int fiches);             // azzera le statistiche all'inizio della sessione
+void stats_registra(struct Statistiche *s, int variazione, int fiches, int blackjack);   // aggiorna le statistiche dopo una mano (blackjack = 1 se il giocatore ha fatto blackjack)
+void stats_mostra(const struct Statistiche *s, int fiches);     // mostra il riepilogo della sessione
+
+#endif                                                          // fine dell'include guard
+```
+
+### `stats.c`
+
+```c
+#include <stdio.h>                                              // printf
+#include "grafica.h"                                            // i colori (GIALLO, RESET)
+#include "stats.h"                                              // la struct e le dichiarazioni di questo modulo
+
+void stats_init(struct Statistiche *s, int fiches) {            // azzera le statistiche (s è un puntatore: la struttura originale)
+    s->mani = 0;                                                // nessuna mano giocata
+    s->vinte = 0;                                               // nessuna vittoria
+    s->perse = 0;                                               // nessuna sconfitta
+    s->pareggi = 0;                                             // nessun pareggio
+    s->blackjack = 0;                                           // nessun blackjack
+    s->record = fiches;                                         // il record parte dal saldo iniziale
+    s->serie = 0;                                               // nessuna serie in corso
+    s->serie_max = 0;                                           // nessuna serie registrata
+}                                                               // fine di stats_init
+
+void stats_registra(struct Statistiche *s, int variazione, int fiches, int blackjack) {   // aggiorna i numeri dopo una mano (fiches = saldo già aggiornato)
+    s->mani++;                                                  // una mano in più
+    if (variazione > 0) {                                       // se la mano è stata vinta...
+        s->vinte++;                                             // ...una vittoria in più
+        s->serie++;                                             // ...la serie in corso cresce
+        if (s->serie > s->serie_max) {                          // se supera la serie più lunga...
+            s->serie_max = s->serie;                            // ...diventa la nuova serie più lunga
+        }                                                       // fine del controllo
+    } else if (variazione < 0) {                                // se la mano è stata persa...
+        s->perse++;                                             // ...una sconfitta in più
+        s->serie = 0;                                           // ...la serie si interrompe
+    } else {                                                    // se è un pareggio...
+        s->pareggi++;                                           // ...un pareggio in più (la serie non cambia)
+    }                                                           // fine dei controlli
+    if (blackjack) {                                            // se il giocatore ha fatto blackjack...
+        s->blackjack++;                                         // ...ne conta uno in più
+    }                                                           // fine del controllo
+    if (fiches > s->record) {                                   // se il saldo supera il record...
+        s->record = fiches;                                     // ...è il nuovo record
+    }                                                           // fine del controllo
+}                                                               // fine di stats_registra
+
+void stats_mostra(const struct Statistiche *s, int fiches) {    // mostra il riepilogo (const: la funzione legge soltanto, non modifica)
+    if (s->mani == 0) {                                         // se non si è giocata nessuna mano...
+        return;                                                 // ...non c'è niente da mostrare
+    }                                                           // fine del controllo
+    printf(GIALLO "Statistiche della sessione" RESET "\n");     // titolo in giallo
+    printf("  Mani giocate:           %d\n", s->mani);          // quante mani
+    printf("  Vinte / perse / pari:   %d / %d / %d\n", s->vinte, s->perse, s->pareggi);   // l'esito delle mani
+    printf("  Serie di vittorie max:  %d\n", s->serie_max);     // la serie più lunga
+    printf("  Blackjack:              %d\n", s->blackjack);       // quanti blackjack naturali
+    printf("  Record di fiches:       %d\n", s->record);        // il massimo raggiunto
+    printf("  Fiches finali:          %d\n\n", fiches);         // il saldo di fine sessione
+}                                                               // fine di stats_mostra
+```
+
+### `obiettivi.h`
+
+```c
+#ifndef OBIETTIVI_H                                             // include guard
+#define OBIETTIVI_H                                             // definisce OBIETTIVI_H
+
+#include "stats.h"                                              // servono le statistiche per controllare gli obiettivi
+
+#define NUM_OBIETTIVI 3                                         // quanti obiettivi ci sono
+
+struct Obiettivi {                                              // lo stato degli obiettivi
+    int sbloccato[NUM_OBIETTIVI];                               // per ogni obiettivo: 1 = sbloccato, 0 = ancora da sbloccare
+};                                                              // fine della struct
+
+void obiettivi_init(struct Obiettivi *o);                       // dichiarazione: tutti gli obiettivi partono bloccati
+void obiettivi_controlla(struct Obiettivi *o, const struct Statistiche *s);   // dichiarazione: sblocca (e annuncia) quelli raggiunti
+void obiettivi_mostra(const struct Obiettivi *o);               // dichiarazione: mostra l'elenco degli obiettivi
+
+#endif                                                          // fine dell'include guard
+```
+
+### `obiettivi.c`
+
+```c
+#include <stdio.h>                                              // printf
+#include "grafica.h"                                            // i colori (VERDE, GIALLO, RESET)
+#include "obiettivi.h"                                          // la struct e le dichiarazioni di questo modulo
+
+static const char *nomi[NUM_OBIETTIVI] = {                      // i nomi degli obiettivi (static: visibili solo in questo file)
+    "Primo blackjack",                                          // obiettivo 0
+    "Cinque di fila",                                           // obiettivo 1
+    "Cinquecento"                                               // obiettivo 2
+};                                                              // fine dell'elenco dei nomi
+
+static const char *descrizioni[NUM_OBIETTIVI] = {               // cosa bisogna fare per sbloccarli, nello stesso ordine
+    "fai un blackjack naturale",                                // obiettivo 0
+    "vinci 5 mani consecutive",                                 // obiettivo 1
+    "arriva a 500 fiches"                                       // obiettivo 2
+};                                                              // fine dell'elenco delle descrizioni
+
+void obiettivi_init(struct Obiettivi *o) {                      // azzera gli obiettivi (o è un puntatore: la struttura originale)
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        o->sbloccato[i] = 0;                                    // ...parte bloccato
+    }                                                           // fine del ciclo
+}                                                               // fine di obiettivi_init
+
+void obiettivi_controlla(struct Obiettivi *o, const struct Statistiche *s) {   // controlla le statistiche e sblocca gli obiettivi raggiunti
+    int raggiunto[NUM_OBIETTIVI];                               // per ogni obiettivo: la condizione è soddisfatta?
+    raggiunto[0] = s->blackjack >= 1;                           // 0: almeno un blackjack (il confronto vale 1 se vero, 0 se falso)
+    raggiunto[1] = s->serie_max >= 5;                           // 1: una serie di almeno 5 vittorie consecutive
+    raggiunto[2] = s->record >= 500;                            // 2: il saldo ha toccato almeno 500 fiches
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        if (raggiunto[i] && !o->sbloccato[i]) {                 // ...se è raggiunto e non era ancora sbloccato (! = "non")...
+            o->sbloccato[i] = 1;                                // ...lo sblocca...
+            printf(VERDE "\n★ Obiettivo sbloccato: %s" RESET " (%s)\n", nomi[i], descrizioni[i]);   // ...e lo annuncia
+        }                                                       // fine del controllo
+    }                                                           // fine del ciclo
+}                                                               // fine di obiettivi_controlla
+
+void obiettivi_mostra(const struct Obiettivi *o) {              // mostra l'elenco con lo stato di ognuno
+    printf("\n" GIALLO "Obiettivi" RESET "\n");                 // titolo in giallo
+    for (int i = 0; i < NUM_OBIETTIVI; i++) {                   // per ogni obiettivo...
+        printf("  [%c] %s: %s\n", o->sbloccato[i] ? 'x' : ' ', nomi[i], descrizioni[i]);   // ...[x] se sbloccato, [ ] se no (condizione ? se_vero : se_falso)
+    }                                                           // fine del ciclo
+    printf("\n");                                               // riga vuota finale
+}                                                               // fine di obiettivi_mostra
+```
+
 ### `main.c`
 
 ```c
 #include <stdio.h>                                              // printf e scanf
 #include <stdlib.h>                                             // srand
 #include <time.h>                                               // time
-#include "carte.h"                                              // Carta, mazzo, NUM_CARTE
+#include "carte.h"                                              // Carta, Scarpa, NUM_CARTE
 #include "mano.h"                                               // Mano, punteggio, aggiungi_carta
-#include "grafica.h"                                          // mostra_mano e i colori
+#include "grafica.h"                                            // mostra_mano e i colori
+#include "menu.h"                                               // logo e menu
+#include "stats.h"                                              // statistiche di sessione
+#include "obiettivi.h"                                          // obiettivi da sbloccare
 
+enum Azione { FERMATO, RADDOPPIATO, DIVISO };                   // come finisce il turno del giocatore: si è fermato, ha raddoppiato o vuole dividere
 
-void turno_giocatore(struct Mano *giocatore, struct Carta mazzo[], int *prossima) {   // turno del giocatore: mano e posizione nel mazzo arrivano come puntatori, così la funzione può modificarle
+enum Azione turno_giocatore(const char *titolo, struct Mano *giocatore, struct Scarpa *scarpa, int puo_raddoppiare, int puo_dividere) {   // turno del giocatore: restituisce l'azione scelta
+    enum Azione azione = FERMATO;                               // se non succede altro, il turno finisce con "fermato"
     char scelta;                                                // qui memorizza la lettera digitata (char = un solo carattere)
     while (punteggio(*giocatore) < 21) {                        // finché il punteggio è sotto 21 (*giocatore = la mano a cui punta il puntatore)
-        printf("Vuoi pescare (c) o fermarti (s)? ");            // chiede cosa fare
+        printf("Vuoi pescare (c) o fermarti (s)");              // inizio della domanda (senza andare a capo)
+        if (puo_raddoppiare) {                                  // se il raddoppio è possibile...
+            printf(", raddoppiare (d)");                        // ...lo propone
+        }                                                       // fine del controllo
+        if (puo_dividere) {                                     // se la divisione è possibile...
+            printf(", dividere (p)");                           // ...la propone
+        }                                                       // fine del controllo
+        printf("? ");                                           // fine della domanda
         if (scanf(" %c", &scelta) != 1) {                       // legge un carattere da tastiera (lo spazio prima di %c salta gli invii); se la lettura fallisce...
             break;                                              // ...esce dal ciclo
         }                                                       // fine del controllo
         if (scelta == 'c') {                                    // se ha scritto "c" (i caratteri singoli vogliono gli apici '...')...
-            aggiungi_carta(giocatore, mazzo[*prossima]);        // ...mette nella mano la carta in cima al mazzo (*prossima = la posizione attuale)
-            (*prossima)++;                                      // la prossima carta da pescare è quella dopo (le parentesi sono necessarie)
-            mostra_mano("Giocatore", *giocatore, 0);            // mostra la mano aggiornata (*giocatore perché qui la mano arriva come puntatore)
+            aggiungi_carta(giocatore, scarpa_pesca(scarpa));    // ...mette nella mano la carta in cima alla scarpa
+            mostra_mano(titolo, *giocatore, 0);                 // mostra la mano aggiornata (*giocatore perché qui la mano arriva come puntatore)
+            puo_raddoppiare = 0;                                // dopo aver pescato non si può più raddoppiare...
+            puo_dividere = 0;                                   // ...né dividere
         } else if (scelta == 's') {                             // altrimenti, se ha scritto "s"...
             break;                                              // ...esce dal ciclo: il giocatore si ferma
-        } else {                                                // in tutti gli altri casi...
+        } else if (scelta == 'd' && puo_raddoppiare) {          // altrimenti, se ha scritto "d" ed è permesso...
+            printf(GIALLO "Raddoppio: la puntata raddoppia e prendi una sola carta.\n" RESET);   // ...lo annuncia...
+            aggiungi_carta(giocatore, scarpa_pesca(scarpa));    // ...prende UNA sola carta...
+            mostra_mano(titolo, *giocatore, 0);                 // ...la mostra...
+            azione = RADDOPPIATO;                               // ...segnala il raddoppio (la puntata la raddoppia gioca_mano)...
+            break;                                              // ...e il turno finisce
+        } else if (scelta == 'p' && puo_dividere) {             // altrimenti, se ha scritto "p" ed è permesso...
+            azione = DIVISO;                                    // ...segnala la divisione (la fa gioca_mano)...
+            break;                                              // ...e il turno finisce
+        } else {                                                // in tutti gli altri casi (lettera sbagliata o azione non permessa)...
             printf("Scelta non valida.\n");                     // ...avvisa e richiede la scelta
         }                                                       // fine della scelta
     }                                                           // fine del ciclo
     if (punteggio(*giocatore) > 21) {                           // a fine turno, se il punteggio supera 21...
-        printf(ROSSO "Hai sballato!\n" RESET);                              // ...il giocatore ha perso
+        printf(ROSSO "Hai sballato!\n" RESET);                  // ...il giocatore ha perso
     }                                                           // fine del controllo
+    return azione;                                              // restituisce come è finito il turno
 }                                                               // fine di turno_giocatore
 
-void turno_banco(struct Mano *banco, struct Carta mazzo[], int *prossima) {   // turno del banco: pesca da solo, senza chiedere nulla
+void turno_banco(struct Mano *banco, struct Scarpa *scarpa) {   // turno del banco: pesca da solo, senza chiedere nulla
     while (punteggio(*banco) < 17) {                            // finché ha meno di 17 punti...
-        aggiungi_carta(banco, mazzo[*prossima]);                // ...pesca la carta in cima al mazzo
-        (*prossima)++;                                          // avanza nel mazzo
+        aggiungi_carta(banco, scarpa_pesca(scarpa));            // ...pesca la carta in cima alla scarpa
     }                                                           // fine del ciclo: il banco si ferma a 17 o più
 }                                                               // fine di turno_banco
 
-
 #define FICHES_INIZIALI 100                                     // fiches con cui si comincia
 
-void pesca_carta(struct Mano *m, struct Carta mazzo[], int *prossima) {   // prende la carta in cima al mazzo e la mette nella mano
-    aggiungi_carta(m, mazzo[*prossima]);                        // aggiunge la carta alla mano
-    (*prossima)++;                                              // avanza nel mazzo
+void pesca_carta(struct Mano *m, struct Scarpa *scarpa) {       // prende la carta in cima alla scarpa e la mette nella mano
+    aggiungi_carta(m, scarpa_pesca(scarpa));                    // pesca e aggiunge
 }                                                               // fine di pesca_carta
 
 int leggi_puntata(int saldo) {                                  // chiede la puntata finché non è valida; restituisce 0 se il giocatore vuole uscire
@@ -1867,21 +3493,38 @@ int leggi_puntata(int saldo) {                                  // chiede la pun
     }                                                           // fine del ciclo
 }                                                               // fine di leggi_puntata
 
-int gioca_mano(int puntata) {                                   // gioca una mano intera; restituisce di quante fiches cambia il saldo (+ vinte, - perse)
-    struct Carta mazzo[NUM_CARTE];                              // il mazzo di questa mano
-    int prossima = 0;                                           // posizione della prossima carta da pescare
-    crea_mazzo(mazzo);                                          // crea il mazzo in ordine
-    mescola_mazzo(mazzo, NUM_CARTE);                            // lo mescola
+static int risolvi_mano(int p_giocatore, int p_banco, int puntata, const char *etichetta) {   // confronta una mano con il banco, stampa l'esito e restituisce la variazione di fiches
+    if (p_giocatore > 21) {                                     // se il giocatore ha sballato...
+        printf(ROSSO "\n%sIl banco vince.\n" RESET, etichetta);   // ...vince il banco (%s inserisce l'etichetta, vuota se la mano è una sola)
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+    if (p_banco > 21) {                                         // se il banco ha sballato...
+        printf(VERDE "\n%sIl banco sballa: hai vinto!\n" RESET, etichetta);   // ...vince il giocatore
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore > p_banco) {                                // se il giocatore ha più punti...
+        printf(VERDE "\n%sHai vinto!\n" RESET, etichetta);      // ...vince
+        return puntata;                                         // guadagna la puntata
+    }                                                           // fine del controllo
+    if (p_giocatore < p_banco) {                                // se ne ha meno...
+        printf(ROSSO "\n%sIl banco vince.\n" RESET, etichetta); // ...perde
+        return -puntata;                                        // perde la puntata
+    }                                                           // fine del controllo
+    printf(GIALLO "\n%sPareggio.\n" RESET, etichetta);          // altrimenti i punteggi sono uguali
+    return 0;                                                   // il saldo non cambia
+}                                                               // fine di risolvi_mano
 
+int gioca_mano(int puntata, int saldo, struct Scarpa *scarpa, int *blackjack) {   // gioca una mano intera; restituisce di quante fiches cambia il saldo (+ vinte, - perse)
     struct Mano giocatore;                                      // la mano del giocatore
     struct Mano banco;                                          // la mano del banco
     giocatore.numero = 0;                                       // all'inizio è vuota
     banco.numero = 0;                                           // anche questa
+    *blackjack = 0;                                             // per ora niente blackjack (*blackjack = la variabile di chi ha chiamato la funzione)
 
-    pesca_carta(&giocatore, mazzo, &prossima);                  // si distribuisce come al tavolo: giocatore...
-    pesca_carta(&banco, mazzo, &prossima);                      // ...banco...
-    pesca_carta(&giocatore, mazzo, &prossima);                  // ...giocatore...
-    pesca_carta(&banco, mazzo, &prossima);                      // ...banco
+    pesca_carta(&giocatore, scarpa);                            // si distribuisce come al tavolo: giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco...
+    pesca_carta(&giocatore, scarpa);                            // ...giocatore...
+    pesca_carta(&banco, scarpa);                                // ...banco
 
     mostra_mano("Banco", banco, 1);                             // mostra il banco con la seconda carta coperta (1 = nascondi)
     mostra_mano("Giocatore", giocatore, 0);                     // mostra il giocatore con tutte le carte scoperte (0 = non nascondere)
@@ -1889,74 +3532,126 @@ int gioca_mano(int puntata) {                                   // gioca una man
     int bj_giocatore = ha_blackjack(giocatore);                 // 1 se il giocatore ha un blackjack naturale, altrimenti 0
     int bj_banco = ha_blackjack(banco);                         // lo stesso per il banco
     if (bj_giocatore || bj_banco) {                             // se almeno uno ha blackjack (|| = "o")...
-        mostra_mano("Banco", banco, 0);                         // si scoprono subito le carte del banco
+        mostra_mano("Banco", banco, 0);                         // ...si scoprono subito le carte del banco
         if (bj_giocatore && bj_banco) {                         // se ce l'hanno entrambi...
             printf(GIALLO "Blackjack per entrambi: pareggio.\n" RESET);      // ...pareggio
             return 0;                                           // il saldo non cambia
         }                                                       // fine del controllo
         if (bj_giocatore) {                                     // se ce l'ha solo il giocatore...
-            printf(VERDE "BLACKJACK! Vinci 3 a 2.\n" RESET);                // ...vince con il pagamento maggiorato
+            printf(VERDE "BLACKJACK! Vinci 3 a 2.\n" RESET);    // ...vince con il pagamento maggiorato
+            *blackjack = 1;                                     // segnala a chi ha chiamato che c'è stato un blackjack
             return puntata * 3 / 2;                             // puntata x 3 / 2 (divisione tra interi: arrotonda per difetto)
         }                                                       // fine del controllo
-        printf(ROSSO "Il banco ha blackjack.\n" RESET);                     // altrimenti ce l'ha solo il banco
+        printf(ROSSO "Il banco ha blackjack.\n" RESET);         // altrimenti ce l'ha solo il banco
         return -puntata;                                        // il giocatore perde la puntata
     }                                                           // fine del controllo
 
-    turno_giocatore(&giocatore, mazzo, &prossima);              // gioca il giocatore (pesca o si ferma)
+    struct Mano mani[2];                                        // le mani del giocatore: una sola, oppure due dopo la divisione
+    int puntate[2];                                             // la puntata di ogni mano
+    int num_mani = 1;                                           // all'inizio il giocatore ha una mano sola
+    mani[0] = giocatore;                                        // la prima mano è quella appena distribuita (la struct viene copiata)
+    puntate[0] = puntata;                                       // con la puntata iniziale
 
-    if (punteggio(giocatore) > 21) {                            // se il giocatore ha sballato...
-        printf(ROSSO "\nIl banco vince.\n" RESET);                          // ...perde, senza che il banco giochi
-        return -puntata;                                        // perde la puntata
+    int puo_raddoppiare = (saldo >= 2 * puntata);               // si può raddoppiare solo se restano fiches per coprire la seconda puntata
+    int puo_dividere = puo_raddoppiare && giocatore.carte[0].valore == giocatore.carte[1].valore;   // si può dividere con due carte uguali e fiches sufficienti
+    enum Azione azione = turno_giocatore("Giocatore", &mani[0], scarpa, puo_raddoppiare, puo_dividere);   // gioca il giocatore e dice come è finito il turno
+
+    if (azione == RADDOPPIATO) {                                // se ha raddoppiato...
+        puntate[0] = puntata * 2;                               // ...la puntata raddoppia
+    } else if (azione == DIVISO) {                              // se ha diviso...
+        num_mani = 2;                                           // ...adesso le mani sono due
+        mani[1].numero = 0;                                     // la seconda mano parte vuota...
+        aggiungi_carta(&mani[1], mani[0].carte[1]);             // ...e riceve la seconda carta della prima mano
+        mani[0].numero = 1;                                     // la prima mano resta con una carta sola
+        puntate[1] = puntata;                                   // la seconda mano ha la stessa puntata della prima
+        pesca_carta(&mani[0], scarpa);                          // ogni mano riceve una nuova carta
+        pesca_carta(&mani[1], scarpa);                          // anche la seconda
+        for (int i = 0; i < 2; i++) {                           // si gioca prima una mano, poi l'altra
+            const char *titolo = (i == 0) ? "Prima mano" : "Seconda mano";   // il titolo da mostrare (condizione ? se_vero : se_falso)
+            mostra_mano(titolo, mani[i], 0);                    // mostra la mano
+            turno_giocatore(titolo, &mani[i], scarpa, 0, 0);    // la gioca (0, 0: dopo la divisione niente raddoppio né nuova divisione)
+        }                                                       // fine del ciclo delle mani
+    }                                                           // fine dei controlli
+
+    int qualcuna_in_gioco = 0;                                  // 1 se almeno una mano non ha sballato
+    for (int i = 0; i < num_mani; i++) {                        // per ogni mano...
+        if (punteggio(mani[i]) <= 21) {                         // ...se non ha sballato...
+            qualcuna_in_gioco = 1;                              // ...il banco dovrà giocare
+        }                                                       // fine del controllo
+    }                                                           // fine del ciclo
+    if (qualcuna_in_gioco) {                                    // se c'è almeno una mano in gioco...
+        turno_banco(&banco, scarpa);                            // ...gioca il banco (pesca fino a 17)
+        mostra_mano("Banco", banco, 0);                         // ...e mostra la sua mano completa
     }                                                           // fine del controllo
 
-    turno_banco(&banco, mazzo, &prossima);                      // gioca il banco (pesca fino a 17)
-    mostra_mano("Banco", banco, 0);                             // mostra la mano completa del banco
-
-    int p_giocatore = punteggio(giocatore);                     // punteggio finale del giocatore
     int p_banco = punteggio(banco);                             // punteggio finale del banco
-    if (p_banco > 21) {                                         // se il banco ha sballato...
-        printf(VERDE "\nIl banco sballa: hai vinto!\n" RESET);              // ...vince il giocatore
-        return puntata;                                         // guadagna la puntata
-    }                                                           // fine del controllo
-    if (p_giocatore > p_banco) {                                // se il giocatore ha più punti...
-        printf(VERDE "\nHai vinto!\n" RESET);                               // ...vince
-        return puntata;                                         // guadagna la puntata
-    }                                                           // fine del controllo
-    if (p_giocatore < p_banco) {                                // se ne ha meno...
-        printf(ROSSO "\nIl banco vince.\n" RESET);                          // ...perde
-        return -puntata;                                        // perde la puntata
-    }                                                           // fine del controllo
-    printf(GIALLO "\nPareggio.\n" RESET);                                    // altrimenti i punteggi sono uguali
-    return 0;                                                   // il saldo non cambia
+    int totale = 0;                                             // somma delle variazioni di tutte le mani
+    for (int i = 0; i < num_mani; i++) {                        // per ogni mano del giocatore...
+        const char *etichetta = "";                             // con una mano sola non serve nessuna etichetta
+        if (num_mani == 2) {                                    // dopo la divisione...
+            etichetta = (i == 0) ? "Prima mano: " : "Seconda mano: ";   // ...si indica di quale mano si parla
+        }                                                       // fine del controllo
+        totale += risolvi_mano(punteggio(mani[i]), p_banco, puntate[i], etichetta);   // confronta con il banco e somma il risultato
+    }                                                           // fine del ciclo
+    return totale;                                              // restituisce quanto cambia il saldo
 }                                                               // fine di gioca_mano
 
-int main(void) {                                                // il programma parte da qui
+void gioca_sessione(struct Obiettivi *obiettivi) {              // una sessione di gioco: si gioca finché ci sono fiches o si esce
     int fiches = FICHES_INIZIALI;                               // il saldo del giocatore
-
-    srand((unsigned)time(NULL));                                // seme casuale basato sull'orario (una volta sola, all'avvio)
-    printf("=== WHITE JACK ===\n");                             // titolo
+    struct Statistiche stats;                                   // le statistiche di questa sessione
+    stats_init(&stats, fiches);                                 // le azzera (&stats = indirizzo della struttura)
+    struct Scarpa scarpa;                                       // la scarpa con i 6 mazzi
+    scarpa_rimescola(&scarpa);                                  // la riempie e la mescola
 
     while (fiches > 0) {                                        // finché ci sono fiches...
         int puntata = leggi_puntata(fiches);                    // ...chiede la puntata
         if (puntata == 0) {                                     // se il giocatore vuole uscire...
             break;                                              // ...esce dal ciclo
         }                                                       // fine del controllo
-        int variazione = gioca_mano(puntata);                   // gioca la mano: restituisce quante fiches si vincono (+) o si perdono (-)
+        if (scarpa_da_rimescolare(&scarpa)) {                   // se restano poche carte nella scarpa...
+            scarpa_rimescola(&scarpa);                          // ...la rimescola...
+            printf(GIALLO "\nIl mazzo viene rimescolato.\n" RESET);   // ...e lo comunica
+        }                                                       // fine del controllo
+        int blackjack = 0;                                      // gioca_mano ci scriverà 1 se il giocatore fa blackjack
+        int variazione = gioca_mano(puntata, fiches, &scarpa, &blackjack);   // gioca la mano: restituisce quante fiches si vincono (+) o si perdono (-)
         fiches += variazione;                                   // aggiorna il saldo
+        stats_registra(&stats, variazione, fiches, blackjack);  // aggiorna le statistiche con il risultato della mano
         if (variazione > 0) {                                   // se è positiva...
             printf(VERDE "\nHai vinto %d fiches\n\n" RESET, variazione);       // ...hai vinto: mostra quante
         } else if (variazione < 0) {                            // se è negativa...
-            printf(ROSSO "\nHai perso %d fiches\n\n" RESET, -variazione);      // ...hai perso: mostra quante (il meno davanti toglie il segno)
+            printf(ROSSO "\nHai perso %d fiches\n\n" RESET, -variazione);      // ...hai perso: mostra quante
         } else {                                                // se è zero...
             printf(GIALLO "\nLa puntata ti torna indietro\n\n" RESET);          // ...nessun cambiamento
         }                                                       // fine dei controlli
+        obiettivi_controlla(obiettivi, &stats);                 // controlla se la mano ha sbloccato qualche obiettivo
     }                                                           // fine del ciclo
 
     if (fiches == 0) {                                          // se il saldo è finito...
-        printf("Hai finito le fiches. Fine della partita.\n");  // ...game over
+        printf("Hai finito le fiches. Fine della partita.\n\n");  // ...game over
     } else {                                                    // altrimenti il giocatore è uscito di sua volontà
-        printf("Esci con %d fiches. Alla prossima!\n", fiches); // saluto con il saldo finale
+        printf("Esci dalla partita con %d fiches.\n\n", fiches); // saluto con il saldo finale
     }                                                           // fine del controllo
+    stats_mostra(&stats, fiches);                               // a fine sessione mostra il riepilogo
+}                                                               // fine di gioca_sessione
+
+int main(void) {                                                // il programma parte da qui
+    srand((unsigned)time(NULL));                                // seme casuale basato sull'orario (una volta sola, all'avvio)
+    struct Obiettivi obiettivi;                                 // gli obiettivi restano sbloccati finché il programma è aperto
+    obiettivi_init(&obiettivi);                                 // all'inizio sono tutti bloccati
+    mostra_logo();                                              // mostra il logo all'avvio
+
+    int scelta = menu_principale();                             // mostra il menu e legge la scelta
+    while (scelta != 4) {                                       // finché non sceglie "Esci"...
+        if (scelta == 1) {                                      // se ha scelto "Gioca"...
+            gioca_sessione(&obiettivi);                         // ...inizia una nuova sessione
+        } else if (scelta == 2) {                               // se ha scelto "Regole"...
+            mostra_regole();                                    // ...le mostra
+        } else {                                                // altrimenti ha scelto "Obiettivi"...
+            obiettivi_mostra(&obiettivi);                       // ...li mostra
+        }                                                       // fine della scelta
+        scelta = menu_principale();                             // torna al menu
+    }                                                           // fine del ciclo
+    printf("\nAlla prossima!\n");                              // saluto finale
     return 0;                                                   // fine, tutto ok
 }                                                               // fine di main
 ```
@@ -1971,14 +3666,14 @@ CC = clang
 CFLAGS = -Wall -Wextra
 
 # Elenco dei file oggetto che compongono il programma
-OBJ = main.o carte.o mano.o grafica.o
+OBJ = main.o carte.o mano.o grafica.o menu.o stats.o obiettivi.o
 
 # Obiettivo principale: il programma si costruisce unendo i file .o (il linker)
 whitejack: $(OBJ)
 	$(CC) -o whitejack $(OBJ)
 
 # main.o dipende da main.c e dagli header che include: se uno cambia, viene ricompilato
-main.o: main.c carte.h mano.h grafica.h
+main.o: main.c carte.h mano.h grafica.h menu.h stats.h obiettivi.h
 	$(CC) $(CFLAGS) -c main.c
 
 # carte.o dipende da carte.c e dal suo header
@@ -1993,6 +3688,18 @@ mano.o: mano.c mano.h carte.h
 grafica.o: grafica.c grafica.h mano.h carte.h
 	$(CC) $(CFLAGS) -c grafica.c
 
+# menu.o dipende da menu.c e dagli header che usa
+menu.o: menu.c menu.h grafica.h mano.h carte.h
+	$(CC) $(CFLAGS) -c menu.c
+
+# stats.o dipende da stats.c e dagli header che usa
+stats.o: stats.c stats.h grafica.h mano.h carte.h
+	$(CC) $(CFLAGS) -c stats.c
+
+# obiettivi.o dipende da obiettivi.c e dagli header che usa
+obiettivi.o: obiettivi.c obiettivi.h stats.h grafica.h
+	$(CC) $(CFLAGS) -c obiettivi.c
+
 # Obiettivo di pulizia: cancella i file generati (-f: nessun errore se non esistono)
 clean:
 	rm -f $(OBJ) whitejack
@@ -2001,16 +3708,9 @@ clean:
 .PHONY: clean
 ```
 
-Per compilare e giocare:
-
-```bash
-make
-./whitejack
-```
-
 ---
 
-## 17. Errori comuni e come risolverli
+## 22. Errori comuni e come risolverli
 
 | Sintomo | Causa e soluzione |
 |---|---|
@@ -2033,11 +3733,17 @@ make
 | Simboli `♥ ♦` o bordi storti / `?` al loro posto | Il terminale non usa UTF-8 o il font non ha quei simboli |
 | `make: 'whitejack' is up to date` | Non è un errore: nessun file è cambiato dall'ultima compilazione |
 | `warning: ...` durante la compilazione | Gli avvisi di `-Wall -Wextra` segnalano cose sospette. Leggi il messaggio e il numero di riga: spesso indicano un vero errore |
+| `use of undeclared identifier 'stats'` (o `'scarpa'`, `'obiettivi'`) | Hai saltato il passo che crea la variabile, di solito dentro `gioca_sessione`. Rileggi i passi della lezione e controlla di averli fatti tutti |
+| `too few arguments to function call` / `too many arguments` | Hai cambiato la firma di una funzione (per esempio `gioca_mano`) ma una chiamata usa ancora la vecchia. Aggiorna la chiamata, vedi la lezione 17 passo 3 |
+| `Pattern not found` con `:/^void turno_giocatore/;/^}/d` | La funzione ha un'intestazione diversa dalla tua. Cerca con `/turno_giocatore` e controlla come inizia la riga |
+| `undefined symbols ... _obiettivi_mostra` (o `_stats_registra`) | Nel `Makefile` manca `obiettivi.o` / `stats.o` in `OBJ` oppure la regola del nuovo modulo |
+| Il rimescolamento non avviene mai | Controlla `SOGLIA_RIMESCOLA` in `carte.h` (dev'essere 78, o più alto per provarlo) e che `gioca_sessione` chiami `scarpa_da_rimescolare` |
+| Compare "Scelta non valida" quando premi `d` o `p` | È normale: la mossa non è permessa (non è la prima decisione, fiches insufficienti, o carte diverse per `p`) |
 | Hai cancellato un file con `rm` per sbaglio | Non c'è cestino. Per questo conviene fare copie di sicurezza (`cp`) prima delle modifiche grosse |
 
 ---
 
-## 18. Glossario
+## 23. Glossario
 
 | Termine | Significato |
 |---|---|
@@ -2066,30 +3772,35 @@ make
 | **`scanf`** | Legge un valore da tastiera |
 | **UTF-8** | Codifica che permette di scrivere simboli come `♥` e `┌` |
 | **Shell** | Il programma che interpreta i comandi del terminale (qui `zsh`) |
+| **Scarpa** | Il contenitore dei mazzi da cui si pesca; qui 6 mazzi insieme (312 carte) |
+| **Double down** (raddoppio) | Mossa che raddoppia la puntata in cambio di una sola carta |
+| **Split** (divisione) | Mossa che trasforma due carte uguali in due mani separate |
+| **Obiettivo** | Traguardo che si sblocca con un messaggio quando le statistiche lo raggiungono |
+| **Parametro "di uscita"** | Puntatore passato a una funzione perché scriva un valore nella variabile di chi la chiama |
+| **`? :`** | Operatore che sceglie tra due valori in una riga: `condizione ? se_vero : se_falso` |
 
 ---
 
-## 19. Esercizi e prossimi passi
+## 24. Esercizi e prossimi passi
 
 ### Esercizi sul progetto
 
+- **Assicurazione e resa**: aggiungi altre mosse del casinò (assicurazione contro il blackjack del banco, *surrender*).
+- **Più divisioni**: permetti di dividere di nuovo e di raddoppiare dopo la divisione (servono più di due mani: un array più grande e un ciclo).
+- **Obiettivi salvati**: scrivi gli obiettivi sbloccati in un file, così restano anche dopo aver chiuso il programma.
+- **Nuovi obiettivi**: aggiungine uno (per esempio "raddoppia e vinci"): cambia `NUM_OBIETTIVI`, i nomi e una condizione in più in `obiettivi_controlla`.
+- **Numero di mazzi**: cambia `NUM_MAZZI` a 8 o a 1 e osserva cosa succede alla soglia di rimescolamento.
 - **Carte italiane**: in `grafica.c` usa `F`, `D`, `R` al posto di `J`, `Q`, `K`.
-- **Schermata iniziale** con il logo "WHITE JACK" in ASCII e un menu (Gioca, Regole, Esci).
-- **Statistiche di sessione**: mani giocate, vinte, record di fiches, serie di vittorie.
-- **Obiettivi** da sbloccare (il primo blackjack, 5 vittorie di fila, arrivare a 500 fiches).
-- **Più mazzi** (di solito 6), rimescolati solo quando restano poche carte.
-- **Raddoppio** (*double down*): raddoppi la puntata e prendi una sola carta.
-- **Divisione** (*split*): con due carte uguali giochi due mani.
 - **Salvare le fiches in un file** (`fopen`, `fprintf`, `fscanf`, `fclose`, dalla stessa `stdio.h`): al termine scrivi il saldo in un file, all'avvio lo rileggi. Attenzione: un file di testo si può modificare a mano, quindi nel codice è bene controllare che il valore letto sia ragionevole.
 
 ### Per continuare a imparare il C
 
 Progetti open source utili per leggere codice e, quando ti senti pronto, contribuire:
 
-- **kilo**: un editor di testo in circa 1000 righe di C, scritto dall'autore di Redis; esiste anche il tutorial "Build Your Own Text Editor" che lo costruisce passo passo.
-- **cJSON**: una piccola libreria per leggere e scrivere JSON, ottima per capire come è fatta una libreria.
-- **Lua**: un interprete di linguaggio in C molto pulito.
-- **Redis**: codice ben commentato e con una struttura chiara. Puoi seguire come viene gestito un comando semplice come `PING` (in `server.c`).
+- **[kilo](https://github.com/antirez/kilo)**: un editor di testo in circa 1000 righe di C, scritto dall'autore di Redis; esiste anche il tutorial "Build Your Own Text Editor" che lo costruisce passo passo.
+- **[cJSON](https://github.com/davegamble/cjson)**: una piccola libreria per leggere e scrivere JSON, ottima per capire come è fatta una libreria.
+- **[Lua](https://github.com/lua/lua)**: un interprete di linguaggio in C molto pulito.
+- **[Redis](https://github.com/redis/redis)**: codice ben commentato e con una struttura chiara. Puoi seguire come viene gestito un comando semplice come `PING` (in `server.c`).
 - **htop** o **jq**: strumenti da terminale reali con comunità attive.
 
 Per contribuire:
